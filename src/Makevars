@@ -5,5 +5,5 @@
 
 # math kernel library
 PKG_LIBS=-L/opt/intel/mkl/lib/intel64 -lmkl_rt
-PKG_CPPFLAGS=-DNOGPU -DCOMPILE_FOR_R -DMKL
+PKG_CPPFLAGS=-I/opt/intel/mkl/include -DNOGPU -DCOMPILE_FOR_R -DMKL
 PKG_CXXFLAGS=-std=c++0x
