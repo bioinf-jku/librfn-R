@@ -314,4 +314,15 @@ public:
 	bool handle_valid(sparseMatrix a) {
 		return a.values != (float*)-1;
 	}
+
+	float* get_batch(const float* X, int ncol, int batch_num, int batch_size) {
+		/* return pointer */
+		return (float*) &X[batch_num * batch_size * ncol];
+	}
+
+	sparseMatrix get_batch(sparseMatrix X, int ldx, int batch_num, int batch_size) {
+		sparseMatrix dest;
+		memcpy_matrix(dest, X, batch_size, batch_num * batch_size);
+		return dest;
+	}
 };
