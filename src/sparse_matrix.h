@@ -2,9 +2,9 @@
 #define SPARSE_MATRIX_H
 
 struct sparseMatrix {
-	float *values;
-	unsigned *columns;
-	unsigned *rowPointers;
-	unsigned m; // number of rows
-	unsigned nnz; // number of nonzero elements
+	float *values = -1;
+	unsigned *columns = -1;
+	unsigned *rowPointers = -1;
+	unsigned m = -1; // number of rows
+	unsigned nnz = -1; // number of nonzero elements
 };
