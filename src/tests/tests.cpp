@@ -104,6 +104,34 @@ TEST_CASE( "Calculate Variance", "[operations]" ) {
 	gpu_op.free(X_d);
 }
 
+TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
+	GPU_Operations gpu_op(512, 512, 512, 0, -1);
+	float X_h[] = { 1.0, 2.0, 3.0, 4.0, 6.0, 10.0 };
+	unsigned column[] = {0, 1, 2, 0, 1, 2};
+	unsigned pointer[] = {0, 3, 6};
+
+	sparseMatrix mat;
+	mat.values = gpu_op.to_device(X_h, 6 * sizeof(float));
+	mat.columns = gpu_op.to_device(column, 6 * sizeof(unsigned));
+	mat.rowPointers = gpu_op.to_device(pointer, 3 * sizeof(unsigned));
+	mat.nnz = 6;
+	mat.m = 2;
+
+	float expected[] = { 2.25, 4, 12.25 };
+	float* vars_d = gpu_op.malloc(3 * sizeof(float));
+	gpu_op.calculate_column_variance(&mat, 2, 3, vars_d);
+	float* vars_h = std::malloc(3 * sizeof(float));
+	float* vars_h = gpu_op.to_host(vars_d, vars_h, 3 * sizeof(float));
+	for (unsigned i = 0; i < 3; i++) {
+		CHECK(expected[i] == vars_h[i]);
+	}
+
+	gpu_op.free(mat.values);
+	gpu_op.free(mat.rowPointers);
+	gpu_op.free(mat.columns);
+	std::free(vars_h);
+}
+
 // the pointer-to-memberfunction thingy is pretty ugly :(
 template<class OP>
 float* test_scale(OP& op, void (OP::*scalefunc)(float*, unsigned int, unsigned int, float*) const, float* X, float* s,
