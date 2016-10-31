@@ -302,6 +302,6 @@ public:
 	}
 
 	bool handle_valid(sparseMatrix a) {
-		return a.values != -1;
+		return a.values != (float*)-1;
 	}
 };
