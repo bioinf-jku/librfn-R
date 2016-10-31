@@ -246,4 +246,18 @@ public:
 	T init_invalid(void) {
 		return (typeid(T) == typeid(sparseMatrix) ? (T) -1 : (T) 0);
 	}
+
+	template<typename T>
+	T malloc_matrix(int rows, int cols) {
+		return malloc_matrix(rows, cols, init_invalid<T>());
+	}
+
+	sparseMatrix malloc_matrix(int rows, int cols, sparseMatrix dummy) {
+		sparseMatrix matrix;
+		return matrix;
+	}
+
+	float *malloc_matrix(int rows, int cols, float *dummy) {
+		return malloc(rows * cols * sizeof(float));
+	}
 };
