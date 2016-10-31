@@ -3,7 +3,7 @@ CC := gcc -std=c99
 CXX := g++ -std=c++11
 LINK := g++
 USEGPU = yes
-DEBUG = no
+DEBUG = yes
 
 
 # BLAS/LAPACK implementation
@@ -15,7 +15,7 @@ LIBS=-llapack -lblas
 
 GPUINC=-I/usr/local/cuda/include
 GPULIB=-L/usr/local/cuda/lib64
-GPUSO=-lcublas -lcurand -lcuda -lcudart -lcusolver
+GPUSO=-lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse
 
 
 ifeq ($(DEBUG), no)
@@ -73,3 +73,5 @@ gpu_operations.o: gpu_operations.cu
 
 clean:
 	rm -rf *.o librfn.so tests/*.o
+
+.PRECIOUS: test

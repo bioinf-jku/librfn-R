@@ -192,18 +192,21 @@ __global__ void sparse_col_variance_kernel(const sparseMatrix X, float* var, con
 	for (unsigned i = tid; i < ncols; i += num_threads) {
 		var[i] = 0.0;
 		for (unsigned j = 0; j < X.nnz; ++j) {
-			if (X.column_indices[j] == i) {
+			if (X.columns[j] == i) {
 				var[i] += X.values[j];
 			}
 		}
 		float m = var[i] / nrows;
 		var[i] = 0.0;
+		unsigned nonzero_per_column = 0;
 		for (unsigned j = 0; j < X.nnz; ++j) {
-			if (X.column_indices[j] == i) {
+			if (X.columns[j] == i) {
 				float tmp = X.values[j] - m;
 				var[i] += tmp * tmp;
+				nonzero_per_column++;
 			}
 		}
+		var[i] += (nrows - nonzero_per_column) * (m * m);
 		var[i] /= nrows;
 	}
 }
@@ -212,7 +215,7 @@ __global__ void sparse_scale_columns_kernel(sparseMatrix X, float* a, const unsi
 	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const unsigned num_threads = blockDim.x * gridDim.x;
 	for (unsigned i = tid; i < X.nnz; i += num_threads) {
-		X.values[i] *= a[X.column_indices[i]];
+		X.values[i] *= a[X.columns[i]];
 	}
 }
 
@@ -391,7 +394,7 @@ void GPU_Operations::fill_eye(float* X, unsigned n) const {
 }
 
 void GPU_Operations::calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols,
-		float* variance) {
+		float* variance) const {
 	int threads, blocks;
 	get_grid_sizes(ncols, &threads, &blocks);
 	col_variance_kernel<<<threads, blocks>>>(X, variance, nrows, ncols);
@@ -486,20 +489,20 @@ void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsi
 		float* variance) const {
 	int threads, blocks;
 	get_grid_sizes(ncols, &threads, &blocks);
-	sparse_col_variance_kernel<<<threads, blocks>>>(X*, variance, nrows, ncols);
+	sparse_col_variance_kernel<<<threads, blocks>>>(*X, variance, nrows, ncols);
 }
 
 void GPU_Operations::scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
 
 	int threads, blocks;
 	get_grid_sizes(ncols * nrows, &threads, &blocks);
-	sparse_scale_columns_kernel<<<threads, blocks>>>(X*, s, nrows, ncols);
+	sparse_scale_columns_kernel<<<threads, blocks>>>(*X, s, nrows, ncols);
 }
 
 void GPU_Operations::scale_rows(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
 	int threads, blocks;
 	get_grid_sizes(ncols * nrows, &threads, &blocks);
-	sparse_scale_rows_kernel<<<threads, blocks>>>(X*, s, nrows, ncols);
+	sparse_scale_rows_kernel<<<threads, blocks>>>(*X, s, nrows, ncols);
 }
 
 void GPU_Operations::dropout(sparseMatrix* X, const unsigned size, const float dropout_rate) const {

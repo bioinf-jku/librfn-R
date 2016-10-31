@@ -104,32 +104,42 @@ TEST_CASE( "Calculate Variance", "[operations]" ) {
 	gpu_op.free(X_d);
 }
 
-TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
-	GPU_Operations gpu_op(512, 512, 512, 0, -1);
-	float X_h[] = { 1.0, 2.0, 3.0, 4.0, 6.0, 10.0 };
-	unsigned column[] = {0, 1, 2, 0, 1, 2};
-	unsigned pointer[] = {0, 3, 6};
-
+void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const unsigned* c,
+		const unsigned* p, unsigned m, unsigned n, unsigned nnz, const float* expected) {
 	sparseMatrix mat;
-	mat.values = gpu_op.to_device(X_h, 6 * sizeof(float));
-	mat.columns = gpu_op.to_device(column, 6 * sizeof(unsigned));
-	mat.rowPointers = gpu_op.to_device(pointer, 3 * sizeof(unsigned));
-	mat.nnz = 6;
-	mat.m = 2;
+	mat.values = gpu_op.to_device(x, nnz * sizeof(float));
+	mat.columns = gpu_op.to_device(c, nnz * sizeof(unsigned));
+	mat.rowPointers = gpu_op.to_device(p, (m + 1) * sizeof(unsigned));
+	mat.nnz = nnz;
+	mat.m = m;
 
-	float expected[] = { 2.25, 4, 12.25 };
-	float* vars_d = gpu_op.malloc(3 * sizeof(float));
-	gpu_op.calculate_column_variance(&mat, 2, 3, vars_d);
-	float* vars_h = std::malloc(3 * sizeof(float));
-	float* vars_h = gpu_op.to_host(vars_d, vars_h, 3 * sizeof(float));
-	for (unsigned i = 0; i < 3; i++) {
-		CHECK(expected[i] == vars_h[i]);
+	float* vars_d = gpu_op.malloc(n * sizeof(float));
+	gpu_op.calculate_column_variance(&mat, m, n, vars_d);
+	float* vars_h = (float*) std::malloc(n * sizeof(float));
+	gpu_op.to_host(vars_d, vars_h, n * sizeof(float));
+	for (unsigned i = 0; i < n; i++) {
+		CHECK(std::abs(expected[i] - vars_h[i]) < 1e-3);
 	}
 
 	gpu_op.free(mat.values);
 	gpu_op.free(mat.rowPointers);
 	gpu_op.free(mat.columns);
 	std::free(vars_h);
+}
+
+TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
+	GPU_Operations gpu_op(512, 512, 512, 0, -1);
+	float X_h[] = { 1.0, 2.0, 3.0, 4.0, 6.0, 10.0 };
+	unsigned column[] = {0, 1, 2, 0, 1, 2};
+	unsigned pointer[] = {0, 3, 6};
+	float expected[] = { 2.25, 4, 12.25 };
+	test_sparse_variance(gpu_op, X_h, column, pointer, 2, 3, 6, expected);
+
+	float x2[] = {5.0, 1.0};
+	unsigned c2[] = {0, 1};
+	unsigned p2[] = {0, 0, 1, 1, 2, 2, 2};
+	float e2[] = {3.472222, 0.13889, 0.0, 0.0, 0.0, 0.0, 0.0};
+	test_sparse_variance(gpu_op, x2, c2, p2, 6, 7, 2, e2);
 }
 
 // the pointer-to-memberfunction thingy is pretty ugly :(
