@@ -376,7 +376,7 @@ void GPU_Operations::printMatrixCM(const float* a, int n, int m, const char* fmt
 	std::free(tmp);
 }
 
-void GPU_Operations::subtract_first_element(unsigned* a, unsigned len) {
+void GPU_Operations::subtract_first_element(unsigned* a, unsigned len) const {
 	int threads, blocks;
 	get_grid_sizes(len, &threads, &blocks);
 	invsqrt_eltw<<<threads, blocks>>>(a, len);

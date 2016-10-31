@@ -298,7 +298,7 @@ public:
 		return dest;
 	}
 
-	void subtract_first_element(unsigned* a, unsigned len);
+	void subtract_first_element(unsigned* a, unsigned len) const;
 
 	void free_sparse(void *ptr) {
 	}
