@@ -289,4 +289,19 @@ public:
 	}
 
 	void subtract_first_element(unsigned* a, unsigned len);
+
+	void free_sparse(void *ptr) {
+	}
+
+	void free_sparse(sparseMatrix a) {
+		if (handle_valid(a)) {
+			free(a.columns);
+			free(a.rowPointers);
+			free(a.values);
+		}
+	}
+
+	bool handle_valid(sparseMatrix a) {
+		return a.values != -1;
+	}
 };
