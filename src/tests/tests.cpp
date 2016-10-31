@@ -106,7 +106,7 @@ TEST_CASE( "Calculate Variance", "[operations]" ) {
 
 sparseMatrix* create_sparse_matrix_d(const GPU_Operations &gpu_op, const float* x, const unsigned* c,
 		const unsigned* p, unsigned m, unsigned nnz) {
-	sparseMatrix *mat = std::malloc(sizeof(sparseMatrix));
+	sparseMatrix *mat = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 	mat->values = gpu_op.to_device(x, nnz * sizeof(float));
 	mat->columns = gpu_op.to_device(c, nnz * sizeof(unsigned));
 	mat->rowPointers = gpu_op.to_device(p, (m + 1) * sizeof(unsigned));
@@ -135,7 +135,7 @@ void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const un
 		CHECK(std::abs(expected[i] - vars_h[i]) < 1e-3);
 	}
 
-	free_sparse_matrix_d(mat);
+	free_sparse_matrix_d(gpu_op, mat);
 }
 
 TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
@@ -166,16 +166,16 @@ TEST_CASE( "Scale rows sparse [GPU]", "[operations]" ) {
 	float* s_d = gpu_op.to_device(s, 5 * sizeof(float));
 	gpu_op.scale_rows(mat, 5, 4, s_d);
 
-	float* vals_h = std::malloc(4 * sizeof(float));
+	float* vals_h = (float*) std::malloc(4 * sizeof(float));
 	gpu_op.copy_to_host(mat->values, vals_h, 4 * sizeof(float));
 
 	for (unsigned i = 0; i < 4; i++) {
-		CHECK(std::abs(e[i] - vals_h[i]) < 1e-3);
+		CHECK(e[i] == vals_h[i]);
 	}
 
 	std::free(vals_h);
 	gpu_op.free(s_d);
-	free_sparse_matrix_d(mat);
+	free_sparse_matrix_d(gpu_op, mat);
 }
 
 TEST_CASE( "Scale columns sparse [GPU]", "[operations]" ) {
@@ -186,21 +186,21 @@ TEST_CASE( "Scale columns sparse [GPU]", "[operations]" ) {
 	unsigned p[] = {0, 0, 1, 2, 4, 4};
 
 	float s[] = { 3.0, 2.0, 4.0, 8.0 };
-	float e[] = { 15.0, 2.0, 12.0, -8.0};
+	float e[] = { 15.0, 2.0, 12.0, -16.0};
 	sparseMatrix* mat = create_sparse_matrix_d(gpu_op, x, c, p, 5, 4);
 	float* s_d = gpu_op.to_device(s, 4 * sizeof(float));
 	gpu_op.scale_columns(mat, 5, 4, s_d);
 
-	float* vals_h = std::malloc(4 * sizeof(float));
+	float* vals_h = (float*)std::malloc(4 * sizeof(float));
 	gpu_op.copy_to_host(mat->values, vals_h, 4 * sizeof(float));
 
 	for (unsigned i = 0; i < 4; i++) {
-		CHECK(std::abs(e[i] - vals_h[i]) < 1e-3);
+		CHECK(e[i] == vals_h[i]);
 	}
 
 	std::free(vals_h);
 	gpu_op.free(s_d);
-	free_sparse_matrix_d(mat);
+	free_sparse_matrix_d(gpu_op, mat);
 }
 
 // the pointer-to-memberfunction thingy is pretty ugly :(
