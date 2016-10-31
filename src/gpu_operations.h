@@ -260,4 +260,33 @@ public:
 	float *malloc_matrix(int rows, int cols, float *dummy) {
 		return malloc(rows * cols * sizeof(float));
 	}
+
+	float *memcpy_matrix(float *dest, float *src, int nrows_to_copy, int src_ncol, int first_row = 0) const {
+		return memcpy(dest, &src[first_row * src_ncol], nrows_to_copy * src_ncol * sizeof(float));
+	}
+
+	sparseMatrix memcpy_matrix(sparseMatrix dest, sparseMatrix src, int nrows_to_copy, int src_ncol, int first_row = 0) const {
+		unsigned fromIndex = 0;
+		unsigned toIndex   = 0;
+		CUDA_CALL(cudaMemcpy(&fromIndex, src.rowPointers + first_row,                 sizeof(unsigned), cudaMemcpyDeviceToHost));
+		CUDA_CALL(cudaMemcpy(&toIndex  , src.rowPointers + first_row + nrows_to_copy, sizeof(unsigned), cudaMemcpyDeviceToHost));
+
+		dest.nnz = (toIndex - fromIndex);
+		dest.values = malloc(dest.nnz * sizeof(float));
+		memcpy(dest.values, src.values + fromIndex, dest.nnz * sizeof(float));
+
+		dest.nnz = toIndex - fromIndex;
+		dest.m = src.m;
+
+		dest.columns = malloc(dest.nnz * sizeof(unsigned));
+		memcpy(des.columns, src.columns + fromIndex, dest.nnz * sizeof(unsigned));
+
+		dest.rowPointers = malloc(nrows_to_copy * sizeof(unsigned));
+		memcpy(dest.rowPointers, src.rowPointers + first_row, (nrows_to_copy + 1) * sizeof(unsigned));
+		subtract_first_element(src.rowPointers, nrows_to_copy + 1);
+
+		return dest = srowsubset(src, first_row, nrows_to_copy + 1);
+	}
+
+	void subtract_first_element(unsigned* a, unsigned len);
 };
