@@ -51,7 +51,7 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 
 	sparseMatrix dest;
 
-	gpu_op.memcpy_matrix(dest, mat, 2, 1);
+	gpu_op.memcpy_matrix(&dest, &mat, 2, 0, 1);
 
 	float* dest_values            = (float*) malloc(4 * sizeof(float));
 	unsigned* dest_columnPointers = (unsigned*) malloc(4 * sizeof(unsigned));
@@ -66,6 +66,7 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 	unsigned exp_rowPointers[]    = {0, 1, 4};
 
 	for (unsigned i = 0; i < dest.m + 1; ++i) {
+		printf("%d", i);
 		CHECK(exp_rowPointers[i] == dest_rowPointers[i]);
 	}
 	for (unsigned i = 0; i < dest.nnz; ++i) {

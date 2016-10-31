@@ -383,30 +383,30 @@ void GPU_Operations::printMatrixCM(const float* a, int n, int m, const char* fmt
 	std::free(tmp);
 }
 
-void GPU_Operations::printMatrixSP(const sparseMatrix a, const char* fmt) {
+void GPU_Operations::printMatrixSP(const sparseMatrix *a, const char* fmt) const {
 	const char* format = fmt == 0 ? "%1.3f " : fmt;
-	size_t size_values = a.nnz * sizeof(float);
-	size_t size_columns = a.nnz * sizeof(unsigned);
-	size_t size_pointers = (a.m + 1)* sizeof(unsigned);
+	size_t size_values = a->nnz * sizeof(float);
+	size_t size_columns = a->nnz * sizeof(unsigned);
+	size_t size_pointers = (a->m + 1)* sizeof(unsigned);
 
 	float* tmp_vals = (float*) std::malloc(size_values);
 	unsigned* tmp_cols = (unsigned*) std::malloc(size_columns);
 	unsigned* tmp_pointers = (unsigned*) std::malloc(size_pointers);
 
-	CUDA_CALL(cudaMemcpy(tmp_vals, a.values, size_values, cudaMemcpyDeviceToHost));
-	CUDA_CALL(cudaMemcpy(tmp_cols, a.columns, size_columns, cudaMemcpyDeviceToHost));
-	CUDA_CALL(cudaMemcpy(tmp_pointers, a.rowPointers, size_pointers, cudaMemcpyDeviceToHost));
+	CUDA_CALL(cudaMemcpy(tmp_vals, a->values, size_values, cudaMemcpyDeviceToHost));
+	CUDA_CALL(cudaMemcpy(tmp_cols, a->columns, size_columns, cudaMemcpyDeviceToHost));
+	CUDA_CALL(cudaMemcpy(tmp_pointers, a->rowPointers, size_pointers, cudaMemcpyDeviceToHost));
 
 	printf("values: ");
-	for (unsigned i = 0; i < a.nnz; i++) {
+	for (unsigned i = 0; i < a->nnz; i++) {
 		printf(format, tmp_vals[i]);
 	}
 	printf("\npointers: ");
-	for (unsigned i = 0; i <  a.m + 1; i++) {
+	for (unsigned i = 0; i <  a->m + 1; i++) {
 		printf("%d ", tmp_pointers[i]);
 	}
 	printf("\ncolumns: ");
-	for (unsigned i = 0; i < a.nnz; i++) {
+	for (unsigned i = 0; i < a->nnz; i++) {
 		printf("%d ", tmp_cols[i]);
 	}
 	printf("\n");
