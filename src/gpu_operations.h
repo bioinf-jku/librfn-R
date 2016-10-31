@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <cassert>
 #include <map>
+#include <typeinfo> /* for typeid */
 #include "sparse_matrix.h"
 
 using std::fprintf;
