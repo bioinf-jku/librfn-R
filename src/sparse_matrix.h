@@ -8,3 +8,5 @@ struct sparseMatrix {
 	unsigned m = -1; // number of rows
 	unsigned nnz = -1; // number of nonzero elements
 };
+
+#endif /* SPARSE_MATRIX_H */
