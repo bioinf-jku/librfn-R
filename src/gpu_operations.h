@@ -221,6 +221,17 @@ public:
 		return retval;
 	}
 
+	template<typename T> T* malloc_t(size_t size) const {
+		T* retval = 0;
+		cudaError_t err = cudaMalloc(&retval, size);
+		CUDA_CALL(err);
+		if (err != cudaSuccess) {
+			fprintf(stderr, "cudaMalloc failed\n");
+			retval = 0;
+		}
+		return retval;
+	}
+
 	void fill_eye(float* X, unsigned n) const;
 	void fill(float* X, const unsigned size, const float value) const;
 	void maximum(float* x, const float value, const unsigned size) const;
@@ -278,7 +289,7 @@ public:
 		dest.nnz = toIndex - fromIndex;
 		dest.m = src.m;
 
-		dest.columns = malloc(dest.nnz * sizeof(unsigned));
+		dest.columns = malloc_t<unsigned>(dest.nnz * sizeof(unsigned));
 		memcpy(des.columns, src.columns + fromIndex, dest.nnz * sizeof(unsigned));
 
 		dest.rowPointers = malloc(nrows_to_copy * sizeof(unsigned));
