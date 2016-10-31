@@ -234,6 +234,13 @@ GPU_Operations::GPU_Operations(const int n, const int m, const int k, unsigned l
 	ones = malloc(ones_size * sizeof(float));
 	fill(ones, ones_size, 1.0f);
 	CUDA_CALL(cudaMalloc(&devinfo, sizeof(int)));
+
+	cusparseStatus_t sp_status = cusparseCreate(&sparseHandle);
+	if (status != CUSPARSE_STATUS_SUCCESS) {
+		fprintf(stderr, "cuSparse: %d\n", sp_status);
+		cudaDeviceReset();
+		throw std::runtime_error("cuSparse error");
+	}
 }
 
 GPU_Operations::~GPU_Operations() {

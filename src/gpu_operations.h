@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <cassert>
 #include <map>
+#include <cusparse_v2.h>
 #include <typeinfo> /* for typeid */
 #include "sparse_matrix.h"
 
@@ -19,6 +20,33 @@ using std::fprintf;
 
 inline cublasFillMode_t uplo_to_cublas(const char* uplo) {
 	return tolower(uplo[0]) == 'l' ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
+}
+
+static const char* cusparseErrorString(cusparseStatus_t error) {
+	switch (error) {
+	case CUSPARSE_STATUS_SUCCESS:
+		return "CUSPARSE_STATUS_SUCCESS";
+	case CUSPARSE_STATUS_NOT_INITIALIZED:
+		return "CUSPARSE_STATUS_NOT_INITIALIZED";
+	case CUSPARSE_STATUS_ALLOC_FAILED:
+		return "CUSPARSE_STATUS_ALLOC_FAILED";
+	case CUSPARSE_STATUS_INVALID_VALUE:
+		return "CUSPARSE_STATUS_INVALID_VALUE";
+	case CUSPARSE_STATUS_ARCH_MISMATCH:
+		return "CUSPARSE_STATUS_ARCH_MISMATCH";
+	case CUSPARSE_STATUS_MAPPING_ERROR:
+		return "CUSPARSE_STATUS_MAPPING_ERROR";
+	case CUSPARSE_STATUS_EXECUTION_FAILED:
+		return "CUSPARSE_STATUS_EXECUTION_FAILED";
+	case CUSPARSE_STATUS_INTERNAL_ERROR:
+		return "CUSPARSE_STATUS_INTERNAL_ERROR";
+	case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+		return "CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+	case CUSPARSE_STATUS_ZERO_PIVOT:
+		return "CUSPARSE_STATUS_ZERO_PIVOT";
+	default:
+		return "<unknown>";
+	}
 }
 
 static const char* cublasErrorString(cublasStatus_t error) {
@@ -68,6 +96,15 @@ inline void cublasAssert(cublasStatus_t code, const char *file, int line) {
 	}
 }
 
+#define CUSPARSE_CALL(ans) { cusparseAssert((ans), __FILE__, __LINE__); }
+inline void cusparseAssert(cusparseStatus_t code, const char *file, int line) {
+	// printf("%d (%s:%d)\n", code, file, line);
+	if (code != CUSPARSE_STATUS_SUCCESS) {
+		fprintf(stderr, "CUSPARSE Error: %s %s:%d\n", cusparseErrorString(code), file, line);
+		exit(code);
+	}
+}
+
 static const char* cusolverErrorString(cusolverStatus_t error) {
 	switch (error) {
 	case CUSOLVER_STATUS_SUCCESS:
@@ -104,12 +141,14 @@ inline void cusolverAssert(cusolverStatus_t code, const char *file, int line) {
 #define CUBLAS_CALL(ans) (ans)
 #define CUDA_CALL(ans) (ans)
 #define CUSOLVER_CALL(ans) (ans)
+#define CUSPARSE_CALL(ans) (ans)
 #endif
 
 class GPU_Operations {
 	cublasHandle_t handle;
 	curandState* rng_state;
 	cusolverDnHandle_t cudense_handle;
+	cusparseHandle_t cusparse_handle;
 	std::map<int, float*> buffer_map; // keeps track of buffers allocated for potrf
 	int* devinfo; // cuSOLVER error reporting
 public:
@@ -370,6 +409,7 @@ public:
 		 * however, is row-major, so we need to compute B^T * A^T = C^T instead of A * B = C. The
 		 * transposition is implicitly performed by A, B and C being column-major. */
 		//susgemm('r', transa[0], transb[0], n, alpha, a, b, ldb, beta, c, ldc);
+
 	}
 
 	void gemm(const char *transa, const char *transb, const int m, const int n,
