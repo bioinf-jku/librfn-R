@@ -117,9 +117,17 @@ public:
 	float* ones;
 	GPU_Operations(int n, int m, int k, unsigned long seed, int gpu_id);
 	~GPU_Operations();
+
 	float* to_device(const float* src, size_t size) const;
+	unsigned* to_device(const unsigned* src, size_t size) const;
 
 	float* to_host(float* src, float* dst, size_t size) const {
+		CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost));
+		free(src);
+		return dst;
+	}
+
+	unsigned* to_host(unsigned* src, unsigned* dst, size_t size) const {
 		CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost));
 		free(src);
 		return dst;

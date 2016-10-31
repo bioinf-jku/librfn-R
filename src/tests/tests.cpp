@@ -51,15 +51,15 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 
 	sparseMatrix dest;
 
-	gpu_op.memcpy_matrix(dest, src, 2, 1);
+	gpu_op.memcpy_matrix(dest, mat, 2, 1);
 
-	float* dest_values            = malloc(4 * sizeof(float));
-	unsigned* dest_columnPointers = malloc(4 * sizeof(unsigned));
-	unsigned* dest_rowPointers    = malloc(3 * sizeof(unsigned));
+	float* dest_values            = (float*) malloc(4 * sizeof(float));
+	unsigned* dest_columnPointers = (unsigned*) malloc(4 * sizeof(unsigned));
+	unsigned* dest_rowPointers    = (unsigned*) malloc(3 * sizeof(unsigned));
 
-	gpu_op.to_host(dest.columns    , dest_columnPointers, 4 * sizeof(float));
-	gpu_op.to_host(dest.rowPointers, dest_rowPointers   , 3 * sizeof(unsigned));
-	gpu_op.to_host(dest.values     , dest_values        , 4 * sizeof(unsigned));
+	gpu_op.to_host(dest.values     , dest_values         , 4 * sizeof(float));
+	gpu_op.to_host(dest.rowPointers, dest_rowPointers    , 3 * sizeof(unsigned));
+	gpu_op.to_host(dest.columns    , dest_columnPointers , 4 * sizeof(unsigned));
 
 	float exp_values[]            = {8, 5, 3, 4};
 	unsigned exp_columnPointers[] = {2, 0, 1, 2};

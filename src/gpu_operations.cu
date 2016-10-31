@@ -253,6 +253,13 @@ float* GPU_Operations::to_device(const float* src, size_t size) const {
 	return dst;
 }
 
+unsigned* GPU_Operations::to_device(const unsigned* src, size_t size) const {
+	unsigned* dst = 0;
+	CUDA_CALL(cudaMalloc(&dst, size));
+	CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
+	return dst;
+}
+
 void GPU_Operations::fill(float* X, const unsigned size, const float value) const {
 	int threads, blocks;
 	get_grid_sizes(size, &threads, &blocks);
