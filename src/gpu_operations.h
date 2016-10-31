@@ -295,7 +295,7 @@ public:
 
 		subtract_first_element(src.rowPointers, nrows_to_copy + 1);
 
-		return dest = srowsubset(src, first_row, nrows_to_copy + 1);
+		return dest;
 	}
 
 	void subtract_first_element(unsigned* a, unsigned len);
