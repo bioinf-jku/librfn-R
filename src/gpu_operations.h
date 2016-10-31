@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <cassert>
 #include <map>
+#include "sparse_matrix.h"
 
 using std::fprintf;
 
@@ -240,4 +241,9 @@ public:
 // Useful for debugging
 	void printMatrixCM(const float* a, int n, int m, const char* fmt);
 	void printMatrixRM(const float* a, int n, int m, const char* fmt);
+
+	template<typename T>
+	T init_invalid(void) {
+		return (typeid(T) == typeid(sparseMatrix) ? (T) -1 : (T) 0);
+	}
 };
