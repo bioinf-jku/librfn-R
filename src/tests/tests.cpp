@@ -39,9 +39,9 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 
 	sparseMatrix mat;
 
-	float *values = {1, 8, 5, 3, 4};
-	unsigned* columns = {0, 2, 0, 1, 2};
-	unsigned* pointerIndex = {0, 1, 2, 5};
+	float values[] = {1, 8, 5, 3, 4};
+	unsigned columns[] = {0, 2, 0, 1, 2};
+	unsigned pointerIndex[] = {0, 1, 2, 5};
 
 	mat.values      = gpu_op.to_device(values      , 5 * sizeof(float));
 	mat.columns     = gpu_op.to_device(columns     , 5 * sizeof(unsigned));
@@ -61,9 +61,9 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 	gpu_op.to_host(dest.rowPointers, dest_rowPointers   , 3 * sizeof(unsigned));
 	gpu_op.to_host(dest.values     , dest_values        , 4 * sizeof(unsigned));
 
-	float* exp_values            = {8, 5, 3, 4};
-	unsigned* exp_columnPointers = {2, 0, 1, 2};
-	unsigned* exp_rowPointers    = {0, 1, 4};
+	float exp_values[]            = {8, 5, 3, 4};
+	unsigned exp_columnPointers[] = {2, 0, 1, 2};
+	unsigned exp_rowPointers[]    = {0, 1, 4};
 
 	for (unsigned i = 0; i < dest.m + 1; ++i) {
 		CHECK(exp_rowPointers[i] == dest_rowPointers[i]);
