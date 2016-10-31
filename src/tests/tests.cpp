@@ -104,27 +104,38 @@ TEST_CASE( "Calculate Variance", "[operations]" ) {
 	gpu_op.free(X_d);
 }
 
+sparseMatrix* create_sparse_matrix_d(const GPU_Operations &gpu_op, const float* x, const unsigned* c,
+		const unsigned* p, unsigned m, unsigned nnz) {
+	sparseMatrix *mat = std::malloc(sizeof(sparseMatrix));
+	mat->values = gpu_op.to_device(x, nnz * sizeof(float));
+	mat->columns = gpu_op.to_device(c, nnz * sizeof(unsigned));
+	mat->rowPointers = gpu_op.to_device(p, (m + 1) * sizeof(unsigned));
+	mat->nnz = nnz;
+	mat->m = m;
+
+	return mat;
+}
+
+void free_sparse_matrix_d(const GPU_Operations &gpu_op, sparseMatrix* matrix) {
+	gpu_op.free(matrix->values);
+	gpu_op.free(matrix->rowPointers);
+	gpu_op.free(matrix->columns);
+	std::free(matrix);
+}
+
 void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const unsigned* c,
 		const unsigned* p, unsigned m, unsigned n, unsigned nnz, const float* expected) {
-	sparseMatrix mat;
-	mat.values = gpu_op.to_device(x, nnz * sizeof(float));
-	mat.columns = gpu_op.to_device(c, nnz * sizeof(unsigned));
-	mat.rowPointers = gpu_op.to_device(p, (m + 1) * sizeof(unsigned));
-	mat.nnz = nnz;
-	mat.m = m;
+	sparseMatrix* mat = create_sparse_matrix_d(gpu_op, x, c, p, m, nnz);
 
 	float* vars_d = gpu_op.malloc(n * sizeof(float));
-	gpu_op.calculate_column_variance(&mat, m, n, vars_d);
+	gpu_op.calculate_column_variance(mat, m, n, vars_d);
 	float* vars_h = (float*) std::malloc(n * sizeof(float));
 	gpu_op.to_host(vars_d, vars_h, n * sizeof(float));
 	for (unsigned i = 0; i < n; i++) {
 		CHECK(std::abs(expected[i] - vars_h[i]) < 1e-3);
 	}
 
-	gpu_op.free(mat.values);
-	gpu_op.free(mat.rowPointers);
-	gpu_op.free(mat.columns);
-	std::free(vars_h);
+	free_sparse_matrix_d(mat);
 }
 
 TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
@@ -140,6 +151,56 @@ TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
 	unsigned p2[] = {0, 0, 1, 1, 2, 2, 2};
 	float e2[] = {3.472222, 0.13889, 0.0, 0.0, 0.0, 0.0, 0.0};
 	test_sparse_variance(gpu_op, x2, c2, p2, 6, 7, 2, e2);
+}
+
+TEST_CASE( "Scale rows sparse [GPU]", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float x[] = { 5.0, 1.0, 3.0, -2.0 };
+	unsigned c[] = {0, 1, 2, 3};
+	unsigned p[] = {0, 0, 1, 2, 4, 4};
+
+	float s[] = { 2.0, 3.0, 4.0, 5.0, 6.0 };
+	float e[] = { 15.0, 4.0, 15.0, -10.0};
+	sparseMatrix* mat = create_sparse_matrix_d(gpu_op, x, c, p, 5, 4);
+	float* s_d = gpu_op.to_device(s, 5 * sizeof(float));
+	gpu_op.scale_rows(mat, 5, 4, s_d);
+
+	float* vals_h = std::malloc(4 * sizeof(float));
+	gpu_op.copy_to_host(mat->values, vals_h, 4 * sizeof(float));
+
+	for (unsigned i = 0; i < 4; i++) {
+		CHECK(std::abs(e[i] - vals_h[i]) < 1e-3);
+	}
+
+	std::free(vals_h);
+	gpu_op.free(s_d);
+	free_sparse_matrix_d(mat);
+}
+
+TEST_CASE( "Scale columns sparse [GPU]", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float x[] = { 5.0, 1.0, 3.0, -2.0 };
+	unsigned c[] = {0, 1, 2, 3};
+	unsigned p[] = {0, 0, 1, 2, 4, 4};
+
+	float s[] = { 3.0, 2.0, 4.0, 8.0 };
+	float e[] = { 15.0, 2.0, 12.0, -8.0};
+	sparseMatrix* mat = create_sparse_matrix_d(gpu_op, x, c, p, 5, 4);
+	float* s_d = gpu_op.to_device(s, 4 * sizeof(float));
+	gpu_op.scale_columns(mat, 5, 4, s_d);
+
+	float* vals_h = std::malloc(4 * sizeof(float));
+	gpu_op.copy_to_host(mat->values, vals_h, 4 * sizeof(float));
+
+	for (unsigned i = 0; i < 4; i++) {
+		CHECK(std::abs(e[i] - vals_h[i]) < 1e-3);
+	}
+
+	std::free(vals_h);
+	gpu_op.free(s_d);
+	free_sparse_matrix_d(mat);
 }
 
 // the pointer-to-memberfunction thingy is pretty ugly :(
