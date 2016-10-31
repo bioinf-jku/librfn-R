@@ -283,17 +283,16 @@ public:
 		CUDA_CALL(cudaMemcpy(&toIndex  , src.rowPointers + first_row + nrows_to_copy, sizeof(unsigned), cudaMemcpyDeviceToHost));
 
 		dest.nnz = (toIndex - fromIndex);
-		dest.values = malloc(dest.nnz * sizeof(float));
-		memcpy(dest.values, src.values + fromIndex, dest.nnz * sizeof(float));
-
-		dest.nnz = toIndex - fromIndex;
 		dest.m = src.m;
 
-		dest.columns = malloc_t<unsigned>(dest.nnz * sizeof(unsigned));
-		memcpy(des.columns, src.columns + fromIndex, dest.nnz * sizeof(unsigned));
+		dest.values      = malloc(dest.nnz * sizeof(float));
+		dest.columns     = malloc_t<unsigned>(dest.nnz * sizeof(unsigned));
+		dest.rowPointers = malloc_t<unsigned>(nrows_to_copy * sizeof(unsigned));
 
-		dest.rowPointers = malloc(nrows_to_copy * sizeof(unsigned));
+		memcpy(dest.values     , src.values      + fromIndex, dest.nnz * sizeof(float));
+		memcpy(dest.columns    , src.columns     + fromIndex, dest.nnz * sizeof(unsigned));
 		memcpy(dest.rowPointers, src.rowPointers + first_row, (nrows_to_copy + 1) * sizeof(unsigned));
+
 		subtract_first_element(src.rowPointers, nrows_to_copy + 1);
 
 		return dest = srowsubset(src, first_row, nrows_to_copy + 1);
