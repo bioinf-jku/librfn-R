@@ -185,6 +185,43 @@ __global__ void subtract_first_kernel(unsigned* x, const unsigned len) {
 	}
 }
 
+__global__ void sparse_col_variance_kernel(const sparseMatrix X, float* var, const unsigned nrows,
+		const unsigned ncols) {
+	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const unsigned num_threads = blockDim.x * gridDim.x;
+	for (unsigned i = tid; i < ncols; i += num_threads) {
+		var[i] = 0.0;
+		for (unsigned j = 0; j < X.nnz; ++j) {
+			if (X.column_indices[j] == i) {
+				var[i] += X.values[j];
+			}
+		}
+		float m = var[i] / nrows;
+		var[i] = 0.0;
+		for (unsigned j = 0; j < X.nnz; ++j) {
+			if (X.column_indices[j] == i) {
+				float tmp = X.values[j] - m;
+				var[i] += tmp * tmp;
+			}
+		}
+		var[i] /= nrows;
+	}
+}
+
+__global__ void sparse_scale_columns_kernel(sparseMatrix X, float* a, const unsigned nrows, const unsigned ncols) {
+	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const unsigned num_threads = blockDim.x * gridDim.x;
+	for (unsigned i = tid; i < X.nnz; i += num_threads) {
+		X.values[i] *= a[X.column_indices[i]];
+	}
+}
+
+__global__ void sparse_scale_rows_kernel(sparseMatrix X, float* a, const unsigned nrows, const unsigned ncols) {
+	//const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
+	// calculate row index from tid
+	// TODO
+}
+
 GPU_Operations::GPU_Operations(const int n, const int m, const int k, unsigned long seed, int gpu_id) {
 
 	// if no GPU was specified, try to pick the best one automatically
@@ -235,8 +272,8 @@ GPU_Operations::GPU_Operations(const int n, const int m, const int k, unsigned l
 	fill(ones, ones_size, 1.0f);
 	CUDA_CALL(cudaMalloc(&devinfo, sizeof(int)));
 
-	cusparseStatus_t sp_status = cusparseCreate(&sparseHandle);
-	if (status != CUSPARSE_STATUS_SUCCESS) {
+	cusparseStatus_t sp_status = cusparseCreate(&cusparse_handle);
+	if (sp_status != CUSPARSE_STATUS_SUCCESS) {
 		fprintf(stderr, "cuSparse: %d\n", sp_status);
 		cudaDeviceReset();
 		throw std::runtime_error("cuSparse error");
@@ -443,4 +480,39 @@ void GPU_Operations::subtract_first_element(unsigned* a, unsigned len) const {
 	int threads, blocks;
 	get_grid_sizes(len, &threads, &blocks);
 	subtract_first_kernel<<<threads, blocks>>>(a, len);
+}
+
+void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols,
+		float* variance) const {
+	int threads, blocks;
+	get_grid_sizes(ncols, &threads, &blocks);
+	sparse_col_variance_kernel<<<threads, blocks>>>(X*, variance, nrows, ncols);
+}
+
+void GPU_Operations::scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
+
+	int threads, blocks;
+	get_grid_sizes(ncols * nrows, &threads, &blocks);
+	sparse_scale_columns_kernel<<<threads, blocks>>>(X*, s, nrows, ncols);
+}
+
+void GPU_Operations::scale_rows(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
+	int threads, blocks;
+	get_grid_sizes(ncols * nrows, &threads, &blocks);
+	sparse_scale_rows_kernel<<<threads, blocks>>>(X*, s, nrows, ncols);
+}
+
+void GPU_Operations::dropout(sparseMatrix* X, const unsigned size, const float dropout_rate) const {
+	dropout_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, dropout_rate, rng_state);
+	assert(!cudaGetLastError());
+}
+
+void GPU_Operations::add_gauss_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const {
+	gauss_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
+	assert(!cudaGetLastError());
+}
+
+void GPU_Operations::add_saltpepper_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const {
+	saltpepper_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
+	assert(!cudaGetLastError());
 }

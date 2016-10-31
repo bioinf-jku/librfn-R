@@ -293,15 +293,23 @@ public:
 	void tanh(float* x, const unsigned size) const;
 	void sigmoid(float* x, const unsigned size) const;
 	void soft_threshold(float* x, const float alpha, const unsigned size) const;
-	void calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols, float* variances);
 	void invsqrt(float* s, const unsigned n) const;
+
+	void invert(float* X, const unsigned size) const;
+
+	void calculate_column_variance(const float* X, const unsigned nrows, const unsigned ncols, float* variances) const;
 	void scale_columns(float* X, const unsigned nrows, const unsigned ncols, float* s) const;
 	void scale_rows(float* X, const unsigned nrows, const unsigned ncols, float* s) const;
 	void dropout(float* X, const unsigned size, const float dropout_rate) const;
 	void add_saltpepper_noise(float* X, const unsigned size, const float noise_rate) const;
 	void add_gauss_noise(float* X, const unsigned size, const float noise_rate) const;
 
-	void invert(float* X, const unsigned size) const;
+	void calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* variances) const;
+	void scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const;
+	void scale_rows(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const;
+	void dropout(sparseMatrix* X, const unsigned size, const float dropout_rate) const;
+	void add_saltpepper_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const;
+	void add_gauss_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const;
 
 // Useful for debugging
 	void printMatrixCM(const float* a, int n, int m, const char* fmt);
