@@ -260,6 +260,23 @@ unsigned* GPU_Operations::to_device(const unsigned* src, size_t size) const {
 	return dst;
 }
 
+sparseMatrix* GPU_Operations::to_device(const sparseMatrix* src, size_t size) const {
+	sparseMatrix* dst = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
+
+	size_t size_values = src->nnz * sizeof(float);
+	size_t size_columns = src-> nnz * sizeof(unsigned);
+	size_t size_rowPointers = (src->m + 1) * sizeof(unsigned);
+
+	CUDA_CALL(cudaMalloc(&dst->values, size_values));
+	CUDA_CALL(cudaMalloc(&dst->columns, size_columns));
+	CUDA_CALL(cudaMalloc(&dst->rowPointers, size_rowPointers));
+
+	CUDA_CALL(cudaMemcpy(dst->values, src->values, size_values, cudaMemcpyHostToDevice));
+	CUDA_CALL(cudaMemcpy(dst->columns, src->columns, size_columns, cudaMemcpyHostToDevice));
+	CUDA_CALL(cudaMemcpy(dst->rowPointers, src->rowPointers, size_rowPointers, cudaMemcpyHostToDevice));
+	return dst;
+}
+
 void GPU_Operations::fill(float* X, const unsigned size, const float value) const {
 	int threads, blocks;
 	get_grid_sizes(size, &threads, &blocks);

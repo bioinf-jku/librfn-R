@@ -120,6 +120,7 @@ public:
 
 	float* to_device(const float* src, size_t size) const;
 	unsigned* to_device(const unsigned* src, size_t size) const;
+	sparseMatrix* to_device(const sparseMatrix* src, size_t size) const;
 
 	float* to_host(float* src, float* dst, size_t size) const {
 		CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost));
@@ -359,5 +360,22 @@ public:
 		sparseMatrix* dest = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 		memcpy_matrix(dest, X, batch_size, batch_num * batch_size);
 		return dest;
+	}
+
+	void gemm(const char *transa, const char *transb, const int m, const int n,
+			const int k, const float alpha, const sparseMatrix* a, const int lda,
+			const float *b, const int ldb, const float beta, float *c,
+			const int ldc) const {
+		/* The gemm interface is understood as a column-major routine. The sparse implementation,
+		 * however, is row-major, so we need to compute B^T * A^T = C^T instead of A * B = C. The
+		 * transposition is implicitly performed by A, B and C being column-major. */
+		//susgemm('r', transa[0], transb[0], n, alpha, a, b, ldb, beta, c, ldc);
+	}
+
+	void gemm(const char *transa, const char *transb, const int m, const int n,
+			const int k, const float alpha, const float *a, const int lda,
+			const sparseMatrix* b, const int ldb, const float beta, float *c,
+			const int ldc) const {
+		//susgemm('l', transb[0], transa[0], m, alpha, b, a, lda, beta, c, ldc);
 	}
 };
