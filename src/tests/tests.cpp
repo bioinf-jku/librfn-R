@@ -40,12 +40,12 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 	sparseMatrix mat;
 
 	float values[] = {1, 8, 5, 3, 4};
-	unsigned columns[] = {0, 2, 0, 1, 2};
-	unsigned pointerIndex[] = {0, 1, 2, 5};
+	int columns[] = {0, 2, 0, 1, 2};
+	int pointerIndex[] = {0, 1, 2, 5};
 
 	mat.values      = gpu_op.to_device(values      , 5 * sizeof(float));
-	mat.columns     = gpu_op.to_device(columns     , 5 * sizeof(unsigned));
-	mat.rowPointers = gpu_op.to_device(pointerIndex, 4 * sizeof(unsigned));
+	mat.columns     = gpu_op.to_device(columns     , 5 * sizeof(int));
+	mat.rowPointers = gpu_op.to_device(pointerIndex, 4 * sizeof(int));
 	mat.m = 3;
 	mat.nnz = 5;
 
@@ -54,16 +54,16 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 	gpu_op.memcpy_matrix(&dest, &mat, 2, 0, 1);
 
 	float* dest_values            = (float*) malloc(4 * sizeof(float));
-	unsigned* dest_columnPointers = (unsigned*) malloc(4 * sizeof(unsigned));
-	unsigned* dest_rowPointers    = (unsigned*) malloc(3 * sizeof(unsigned));
+	int* dest_columnPointers = (int*) malloc(4 * sizeof(int));
+	int* dest_rowPointers    = (int*) malloc(3 * sizeof(int));
 
 	gpu_op.to_host(dest.values     , dest_values         , 4 * sizeof(float));
-	gpu_op.to_host(dest.rowPointers, dest_rowPointers    , 3 * sizeof(unsigned));
-	gpu_op.to_host(dest.columns    , dest_columnPointers , 4 * sizeof(unsigned));
+	gpu_op.to_host(dest.rowPointers, dest_rowPointers    , 3 * sizeof(int));
+	gpu_op.to_host(dest.columns    , dest_columnPointers , 4 * sizeof(int));
 
 	float exp_values[]            = {8, 5, 3, 4};
-	unsigned exp_columnPointers[] = {2, 0, 1, 2};
-	unsigned exp_rowPointers[]    = {0, 1, 4};
+	int exp_columnPointers[] = {2, 0, 1, 2};
+	int exp_rowPointers[]    = {0, 1, 4};
 
 	for (unsigned i = 0; i < dest.m + 1; ++i) {
 		printf("%d", i);
@@ -104,12 +104,12 @@ TEST_CASE( "Calculate Variance", "[operations]" ) {
 	gpu_op.free(X_d);
 }
 
-sparseMatrix* create_sparse_matrix_d(const GPU_Operations &gpu_op, const float* x, const unsigned* c,
-		const unsigned* p, unsigned m, unsigned nnz) {
+sparseMatrix* create_sparse_matrix_d(const GPU_Operations &gpu_op, const float* x, const int* c,
+		const int* p, unsigned m, unsigned nnz) {
 	sparseMatrix *mat = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 	mat->values = gpu_op.to_device(x, nnz * sizeof(float));
-	mat->columns = gpu_op.to_device(c, nnz * sizeof(unsigned));
-	mat->rowPointers = gpu_op.to_device(p, (m + 1) * sizeof(unsigned));
+	mat->columns = gpu_op.to_device(c, nnz * sizeof(int));
+	mat->rowPointers = gpu_op.to_device(p, (m + 1) * sizeof(int));
 	mat->nnz = nnz;
 	mat->m = m;
 
@@ -123,8 +123,8 @@ void free_sparse_matrix_d(const GPU_Operations &gpu_op, sparseMatrix* matrix) {
 	std::free(matrix);
 }
 
-void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const unsigned* c,
-		const unsigned* p, unsigned m, unsigned n, unsigned nnz, const float* expected) {
+void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const int* c,
+		const int* p, unsigned m, unsigned n, unsigned nnz, const float* expected) {
 	sparseMatrix* mat = create_sparse_matrix_d(gpu_op, x, c, p, m, nnz);
 
 	float* vars_d = gpu_op.malloc(n * sizeof(float));
@@ -141,14 +141,14 @@ void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const un
 TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
 	GPU_Operations gpu_op(512, 512, 512, 0, -1);
 	float X_h[] = { 1.0, 2.0, 3.0, 4.0, 6.0, 10.0 };
-	unsigned column[] = {0, 1, 2, 0, 1, 2};
-	unsigned pointer[] = {0, 3, 6};
+	int column[] = {0, 1, 2, 0, 1, 2};
+	int pointer[] = {0, 3, 6};
 	float expected[] = { 2.25, 4, 12.25 };
 	test_sparse_variance(gpu_op, X_h, column, pointer, 2, 3, 6, expected);
 
 	float x2[] = {5.0, 1.0};
-	unsigned c2[] = {0, 1};
-	unsigned p2[] = {0, 0, 1, 1, 2, 2, 2};
+	int c2[] = {0, 1};
+	int p2[] = {0, 0, 1, 1, 2, 2, 2};
 	float e2[] = {3.472222, 0.13889, 0.0, 0.0, 0.0, 0.0, 0.0};
 	test_sparse_variance(gpu_op, x2, c2, p2, 6, 7, 2, e2);
 }
@@ -157,8 +157,8 @@ TEST_CASE( "Scale rows sparse [GPU]", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
 	float x[] = { 5.0, 1.0, 3.0, -2.0 };
-	unsigned c[] = {0, 1, 2, 3};
-	unsigned p[] = {0, 0, 1, 2, 4, 4};
+	int c[] = {0, 1, 2, 3};
+	int p[] = {0, 0, 1, 2, 4, 4};
 
 	float s[] = { 2.0, 3.0, 4.0, 5.0, 6.0 };
 	float e[] = { 15.0, 4.0, 15.0, -10.0};
@@ -182,8 +182,8 @@ TEST_CASE( "Scale columns sparse [GPU]", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
 	float x[] = { 5.0, 1.0, 3.0, -2.0 };
-	unsigned c[] = {0, 1, 2, 3};
-	unsigned p[] = {0, 0, 1, 2, 4, 4};
+	int c[] = {0, 1, 2, 3};
+	int p[] = {0, 0, 1, 2, 4, 4};
 
 	float s[] = { 3.0, 2.0, 4.0, 8.0 };
 	float e[] = { 15.0, 2.0, 12.0, -16.0};

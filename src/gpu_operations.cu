@@ -176,7 +176,7 @@ __global__ void scale_rows_kernel(float* X, float* a, const unsigned nrows, cons
 	}
 }
 
-__global__ void subtract_first_kernel(unsigned* x, const unsigned len) {
+__global__ void subtract_first_kernel(int* x, const unsigned len) {
 	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const unsigned num_threads = blockDim.x * gridDim.x;
 	const unsigned elem = x[0];
@@ -303,8 +303,8 @@ float* GPU_Operations::to_device(const float* src, size_t size) const {
 	return dst;
 }
 
-unsigned* GPU_Operations::to_device(const unsigned* src, size_t size) const {
-	unsigned* dst = 0;
+int* GPU_Operations::to_device(const int* src, size_t size) const {
+	int* dst = 0;
 	CUDA_CALL(cudaMalloc(&dst, size));
 	CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice));
 	return dst;
@@ -314,8 +314,8 @@ sparseMatrix* GPU_Operations::to_device(const sparseMatrix* src, size_t size) co
 	sparseMatrix* dst = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 
 	size_t size_values = src->nnz * sizeof(float);
-	size_t size_columns = src-> nnz * sizeof(unsigned);
-	size_t size_rowPointers = (src->m + 1) * sizeof(unsigned);
+	size_t size_columns = src-> nnz * sizeof(int);
+	size_t size_rowPointers = (src->m + 1) * sizeof(int);
 
 	CUDA_CALL(cudaMalloc(&dst->values, size_values));
 	CUDA_CALL(cudaMalloc(&dst->columns, size_columns));
@@ -453,12 +453,12 @@ void GPU_Operations::printMatrixCM(const float* a, int n, int m, const char* fmt
 void GPU_Operations::printMatrixSP(const sparseMatrix *a, const char* fmt) const {
 	const char* format = fmt == 0 ? "%1.3f " : fmt;
 	size_t size_values = a->nnz * sizeof(float);
-	size_t size_columns = a->nnz * sizeof(unsigned);
-	size_t size_pointers = (a->m + 1)* sizeof(unsigned);
+	size_t size_columns = a->nnz * sizeof(int);
+	size_t size_pointers = (a->m + 1)* sizeof(int);
 
 	float* tmp_vals = (float*) std::malloc(size_values);
-	unsigned* tmp_cols = (unsigned*) std::malloc(size_columns);
-	unsigned* tmp_pointers = (unsigned*) std::malloc(size_pointers);
+	int* tmp_cols = (int*) std::malloc(size_columns);
+	int* tmp_pointers = (int*) std::malloc(size_pointers);
 
 	CUDA_CALL(cudaMemcpy(tmp_vals, a->values, size_values, cudaMemcpyDeviceToHost));
 	CUDA_CALL(cudaMemcpy(tmp_cols, a->columns, size_columns, cudaMemcpyDeviceToHost));
@@ -482,7 +482,7 @@ void GPU_Operations::printMatrixSP(const sparseMatrix *a, const char* fmt) const
 	std::free(tmp_pointers);
 }
 
-void GPU_Operations::subtract_first_element(unsigned* a, unsigned len) const {
+void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
 	int threads, blocks;
 	get_grid_sizes(len, &threads, &blocks);
 	subtract_first_kernel<<<threads, blocks>>>(a, len);
