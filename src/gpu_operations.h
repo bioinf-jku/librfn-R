@@ -191,6 +191,69 @@ public:
 		CUBLAS_CALL(cublasSgemm(handle, ta, tb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc));
 	}
 
+#define char_trans_to_cusparse(tr) (tr[0] == 'T' || tr[0] == 't' ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE)
+#define char_trans_to_cusparse_rev(tr) (tr[0] == 'T' || tr[0] == 't' ? CUSPARSE_OPERATION_NON_TRANSPOSE : CUSPARSE_OPERATION_TRANSPOSE)
+
+	void gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
+			const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
+			const int ldc) const {
+		cusparseMatDescr_t descr;
+		CUSPARSE_CALL(cusparseCreateMatDescr(&descr));
+		CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
+		CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
+
+		// Difference in API
+		// 		cusparse: m number of rows of sparse matrix     A
+		//		cublas:   m number of rows of        matrix op( A )
+		// same for k
+		cusparseOperation_t opA = char_trans_to_cusparse(transa);
+		cusparseOperation_t opB = char_trans_to_cusparse(transb);
+		unsigned m_a = m;
+		unsigned n_a = k;
+		if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+			m_a = k;
+			n_a = m;
+		}
+
+		CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, m_a, n, k_a,
+				a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
+		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
+	}
+
+	void gemm(const char *transa, const char *transb, const int m, const int n,
+			const int k, const float alpha, const float *a, const int lda,
+			const sparseMatrix* b, const int ldb, const float beta, float *c,
+			const int ldc) const {
+		// instead of A*B we have to calculate Bt*At and then transpose back the result
+		cusparseMatDescr_t descr;
+		CUSPARSE_CALL(cusparseCreateMatDescr(&descr));
+		CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
+		CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
+
+		cusparseOperation_t opA = char_trans_to_cusparse_rev(transa);
+		cusparseOperation_t opB = char_trans_to_cusparse_rev(transb);
+		unsigned nrow_b = k;
+		unsigned ncol_b = n;
+		if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+			nrow_b = n;
+			ncol_b = k;
+		}
+
+		float* c_t = malloc(nrow_b * ncol * sizeof(float));
+		CUSPARSE_CALL(
+				cusparseScsrmm2(cusparse_handle, opB, opA, nrow_b, k, ncol_b, b->nnz, &alpha, descr, b->values, b->rowPointers, b->columns, a, lda, &beta, c_t, ldc));
+
+		float const al(1.0);
+		float const be(0.0);
+
+		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, nrow_b, k, &al, c_t, ldc, &be, 0, 0, c, ldc));
+
+		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
+		free(c_t);
+	}
+#undef char_trans_to_cusparse
+#undef char_trans_to_cusparse_rev
+
 	void dgmm(const char* mode, const int m, const int n, const float* A, int lda, const float* x, int incx, float* C,
 			int ldc) const {
 		cublasSideMode_t lr = mode[0] == 'l' ? CUBLAS_SIDE_LEFT : CUBLAS_SIDE_RIGHT;
@@ -409,21 +472,4 @@ public:
 		return dest;
 	}
 
-	void gemm(const char *transa, const char *transb, const int m, const int n,
-			const int k, const float alpha, const sparseMatrix* a, const int lda,
-			const float *b, const int ldb, const float beta, float *c,
-			const int ldc) const {
-		/* The gemm interface is understood as a column-major routine. The sparse implementation,
-		 * however, is row-major, so we need to compute B^T * A^T = C^T instead of A * B = C. The
-		 * transposition is implicitly performed by A, B and C being column-major. */
-		//susgemm('r', transa[0], transb[0], n, alpha, a, b, ldb, beta, c, ldc);
-
-	}
-
-	void gemm(const char *transa, const char *transb, const int m, const int n,
-			const int k, const float alpha, const float *a, const int lda,
-			const sparseMatrix* b, const int ldb, const float beta, float *c,
-			const int ldc) const {
-		//susgemm('l', transb[0], transa[0], m, alpha, b, a, lda, beta, c, ldc);
-	}
 };
