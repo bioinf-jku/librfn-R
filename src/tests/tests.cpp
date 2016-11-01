@@ -66,7 +66,6 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 	int exp_rowPointers[]    = {0, 1, 4};
 
 	for (unsigned i = 0; i < dest.m + 1; ++i) {
-		printf("%d", i);
 		CHECK(exp_rowPointers[i] == dest_rowPointers[i]);
 	}
 	for (unsigned i = 0; i < dest.nnz; ++i) {
@@ -201,6 +200,69 @@ TEST_CASE( "Scale columns sparse [GPU]", "[operations]" ) {
 	std::free(vals_h);
 	gpu_op.free(s_d);
 	free_sparse_matrix_d(gpu_op, mat);
+}
+
+TEST_CASE( "gemm sparse GPU", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float x[] = { 5.0, 1.0, 3.0, -2.0 };
+	int c[] = {0, 1, 2, 3};
+	int p[] = {0, 0, 1, 2, 4, 4};
+
+	float b[] = { 1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0, -1.0 };
+	float e[] = { 0.0, 5.0, 2.0, 1.0, 0.0, 0.0, 15.0, 2.0, 5.0, 0.0};
+	sparseMatrix* mat = create_sparse_matrix_d(gpu_op, x, c, p, 5, 4);
+	float* b_d = gpu_op.to_device(b, 8 * sizeof(float));
+	float* c_d = gpu_op.malloc(2 * 5 * sizeof(float));
+
+	int m = 5;
+	int n = 2;
+	int k = 4;
+
+	gpu_op.gemm("n", "n", m, n, k, 1.0, mat, m, b_d, k, 0.0, c_d, m);
+
+	float* c_h = (float*) std::malloc(2 * 5 * sizeof(float));
+
+	gpu_op.to_host(c_d, c_h, 2 * 5 * sizeof(float));
+
+	for (unsigned i = 0; i < 2 * 5; i++) {
+		CHECK(c_h[i] == e[i]);
+	}
+
+	std::free(c_h);
+	gpu_op.free(b_d);
+	free_sparse_matrix_d(gpu_op, mat);
+}
+
+TEST_CASE( "gemm dense GPU", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float a[] = { 0, 5, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, -2, 0};
+	float b[] = { 1.0, 2.0, 3.0, 4.0, 3.0, 2.0, 1.0, -1.0 };
+
+	float e[] = { 0.0, 5.0, 2.0, 1.0, 0.0, 0.0, 15.0, 2.0, 5.0, 0.0};
+
+	int m = 5;
+	int n = 2;
+	int k = 4;
+
+	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
+	float* b_d = gpu_op.to_device(b, k * n * sizeof(float));
+	float* c_d = gpu_op.malloc(n * m * sizeof(float));
+
+	gpu_op.gemm("n", "n", m, n, k, 1.0, a_d, m, b_d, k, 0.0, c_d, m);
+
+	float* c_h = (float*) std::malloc(m * m * sizeof(float));
+
+	gpu_op.to_host(c_d, c_h, 2 * 5 * sizeof(float));
+
+	for (unsigned i = 0; i < 2 * 5; i++) {
+		CHECK(c_h[i] == e[i]);
+	}
+
+	std::free(c_h);
+	gpu_op.free(b_d);
+	gpu_op.free(a_d);
 }
 
 // the pointer-to-memberfunction thingy is pretty ugly :(
