@@ -220,6 +220,49 @@ public:
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
 
+	void cusparseScsrmm2rev(cusparseHandle_t cu_handle,
+                                             cusparseOperation_t transA,
+                                             cusparseOperation_t transB,
+                                             int m, // nrows of op ( A )
+                                             int n, // ncols of B and C
+                                             int k, // nrows of B
+                                             int nnz,
+                                             const float *alpha,
+                                             const float *A,
+                                             int lda,
+                                             const cusparseMatDescr_t descrB,
+                                             const float *csrSortedValB,
+                                             const int *csrSortedRowPtrB,
+                                             const int *csrSortedColIndB,
+                                             const float *beta,
+                                             float *C,
+                                             int ldc) const {
+		if (transA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+			transA = CUSPARSE_OPERATION_TRANSPOSE;
+		} else {
+			transA = CUSPARSE_OPERATION_NON_TRANSPOSE;
+		}
+		if (transB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+			transB = CUSPARSE_OPERATION_TRANSPOSE;
+		} else {
+			transB = CUSPARSE_OPERATION_NON_TRANSPOSE;
+		}
+		float* C_t = malloc(n * m * sizeof(float));
+
+		//printf("\n m: %d, n: %d, k: %d\n", k, m, n);
+		//printf("\n ldb: %d, ldc: %d\n", 50, 50);
+		//printf("\n nnz: %d\n", nnz);
+
+
+		CUSPARSE_CALL(cusparseScsrmm2(cu_handle, transB, transA, k, m, n, nnz, alpha, descrB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, A, 10, beta, C_t, 10));
+
+		float const al = 1.0;
+		float const be = 0.0;
+
+		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &al, C_t, n, &be, 0, 0, C, ldc));
+		free(C_t);
+	}
+
 	void gemm(const char *transa, const char *transb, const int m, const int n,
 			const int k, const float alpha, const float *a, const int lda,
 			const sparseMatrix* b, const int ldb, const float beta, float *c,
@@ -230,26 +273,20 @@ public:
 		CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
 		CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
 
-		cusparseOperation_t opA = char_trans_to_cusparse_rev(transa);
-		cusparseOperation_t opB = char_trans_to_cusparse_rev(transb);
-		unsigned nrow_b = k;
-		unsigned ncol_b = n;
+		// Difference in API
+		// 		cusparse: m number of rows of sparse matrix     A
+		//		cublas:   m number of rows of        matrix op( A )
+		// same for k
+		cusparseOperation_t opA = char_trans_to_cusparse(transa);
+		cusparseOperation_t opB = char_trans_to_cusparse(transb);
+		unsigned m_b = k;
+		unsigned n_b = n;
 		if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-			nrow_b = n;
-			ncol_b = k;
+			m_b = n;
+			n_b = k;
 		}
 
-		float* c_t = malloc(nrow_b * k * sizeof(float));
-		CUSPARSE_CALL(
-				cusparseScsrmm2(cusparse_handle, opB, opA, nrow_b, k, ncol_b, b->nnz, &alpha, descr, b->values, b->rowPointers, b->columns, a, lda, &beta, c_t, ldc));
-
-		float const al(1.0);
-		float const be(0.0);
-
-		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, nrow_b, k, &al, c_t, ldc, &be, 0, 0, c, ldc));
-
-		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
-		free(c_t);
+		cusparseScsrmm2rev(cusparse_handle, opA, opB, m, n_b, m_b, b->nnz, &alpha, a, lda, descr, b->values, b->rowPointers, b->columns, &beta, c, ldc);
 	}
 #undef char_trans_to_cusparse
 #undef char_trans_to_cusparse_rev
