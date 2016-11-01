@@ -215,7 +215,7 @@ public:
 			n_a = m;
 		}
 
-		CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, m_a, n, k_a,
+		CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, m_a, n, n_a,
 				a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
@@ -239,7 +239,7 @@ public:
 			ncol_b = k;
 		}
 
-		float* c_t = malloc(nrow_b * ncol * sizeof(float));
+		float* c_t = malloc(nrow_b * k * sizeof(float));
 		CUSPARSE_CALL(
 				cusparseScsrmm2(cusparse_handle, opB, opA, nrow_b, k, ncol_b, b->nnz, &alpha, descr, b->values, b->rowPointers, b->columns, a, lda, &beta, c_t, ldc));
 
