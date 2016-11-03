@@ -436,7 +436,7 @@ void GPU_Operations::printMatrixRM(const float* a, int n, int m, const char* fmt
 	std::free(tmp);
 }
 
-void GPU_Operations::printMatrixCM(const float* a, int n, int m, const char* fmt) {
+void GPU_Operations::printMatrixCM(const float* a, int n, int m, const char* fmt) const {
 	const char* format = fmt == 0 ? "%1.3f " : fmt;
 	size_t size = n * m * sizeof(float);
 	float* tmp = (float*) std::malloc(size);
