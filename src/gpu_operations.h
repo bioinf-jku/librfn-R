@@ -192,7 +192,6 @@ public:
 	}
 
 #define char_trans_to_cusparse(tr) (tr[0] == 'T' || tr[0] == 't' ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE)
-#define char_trans_to_cusparse_rev(tr) (tr[0] == 'T' || tr[0] == 't' ? CUSPARSE_OPERATION_NON_TRANSPOSE : CUSPARSE_OPERATION_TRANSPOSE)
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
 			const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
@@ -220,76 +219,63 @@ public:
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
 
-	void cusparseScsrmm2rev(cusparseHandle_t cu_handle,
-                                             cusparseOperation_t transA,
-                                             cusparseOperation_t transB,
-                                             int m, // nrows of op ( A )
-                                             int n, // ncols of B and C
-                                             int k, // nrows of B
-                                             int nnz,
-                                             const float *alpha,
-                                             const float *A,
-                                             int lda,
-                                             const cusparseMatDescr_t descrB,
-                                             const float *csrSortedValB,
-                                             const int *csrSortedRowPtrB,
-                                             const int *csrSortedColIndB,
-                                             const float *beta,
-                                             float *C,
-                                             int ldc) const {
-		if (transA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-			transA = CUSPARSE_OPERATION_TRANSPOSE;
-		} else {
-			transA = CUSPARSE_OPERATION_NON_TRANSPOSE;
+	void gemm(
+				const char *transa, // OP ( A ) - dense matrix
+				const char *transb, // OP ( B ) - sparse matrix
+				const int m, 		// number of rows 	 of op ( A ) dense
+				const int n,		// number of columns of op ( B ) sparse
+				const int k, 		// inner dimension number of rows of OP ( B ), columns of OP ( A )
+				const float alpha,  // scaling factor
+				const float *a,  	// dense matrix
+				const int lda,		// leading dimension
+				const sparseMatrix* b, // sparse matrix
+				const int ldb, 		// leading dimension (ignored)
+				const float beta, 	// scaling to c
+				float *c,			// C matrix result
+				const int ldc		// leading dimension of C
+				) const {
+			cusparseOperation_t opA = char_trans_to_cusparse(transa);
+			cusparseOperation_t opB = char_trans_to_cusparse(transb);
+			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+				// transpose B, because we will read rows instead of columns
+				sparseMatrix b_t;
+				cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_t.values, b_t.columns, b_t.rowPointers, CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO);
+			}
+			int m_a = m;
+			int n_a = n;
+			if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+				m_a = k;
+				n_a = m;
+			}
+			// m_a = number of rows of A
+			// n_a = number of columns of A
+			// if trans b == NON_TRANSPOSE
+			// then transpose matrix (this way we can easily get the rows of it
+			// otherwise leave it like it it, and we can copy rows and multiply it with matrix
+			// for every row (these are the columns of original) of sparse matrix b
+				// memcpy the row together with column indices (simple with row pointers)
+				// use sgemvi to multiply matrix and sparse vector
+			int* bufferSize = std::malloc(sizeof(int));
+			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, transA, m_a, n_a, bufferSize));
+			void* buffer = malloc(*bufferSize);
+			int* rowPointer = (int*)std::malloc(sizeof(int));
+			int* nextRowPointer = (int*)std::malloc(sizeof(int));
+
+			// for	every row
+			for(unsigned r = 0; r < n_a; ++r) {
+				// get row pointers
+				copy_to_host(&b->rowPointers[row], row_pointer, sizeof(int));
+				copy_to_host(&b->rowPointers[row + 1], next_row_pointer, sizeof(int));
+
+				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, transA, m_a, n_a, &alpha, a, lda, *nextRowPointer - *rowPointer,
+						&b->values[*rowPointer], &b->columns[*nextRowPointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+			}
+
+			free(buffer);
+			std::free(rowPointer);
+			std::free(nextRowPointer);
 		}
-		if (transB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-			transB = CUSPARSE_OPERATION_TRANSPOSE;
-		} else {
-			transB = CUSPARSE_OPERATION_NON_TRANSPOSE;
-		}
-		float* C_t = malloc(n * m * sizeof(float));
-
-		//printf("\n m: %d, n: %d, k: %d\n", k, m, n);
-		//printf("\n ldb: %d, ldc: %d\n", 50, 50);
-		//printf("\n nnz: %d\n", nnz);
-
-
-		CUSPARSE_CALL(cusparseScsrmm2(cu_handle, transB, transA, k, m, n, nnz, alpha, descrB, csrSortedValB, csrSortedRowPtrB, csrSortedColIndB, A, 10, beta, C_t, 10));
-
-		float const al = 1.0;
-		float const be = 0.0;
-
-		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &al, C_t, n, &be, 0, 0, C, ldc));
-		free(C_t);
-	}
-
-	void gemm(const char *transa, const char *transb, const int m, const int n,
-			const int k, const float alpha, const float *a, const int lda,
-			const sparseMatrix* b, const int ldb, const float beta, float *c,
-			const int ldc) const {
-		// instead of A*B we have to calculate Bt*At and then transpose back the result
-		cusparseMatDescr_t descr;
-		CUSPARSE_CALL(cusparseCreateMatDescr(&descr));
-		CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
-		CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
-
-		// Difference in API
-		// 		cusparse: m number of rows of sparse matrix     A
-		//		cublas:   m number of rows of        matrix op( A )
-		// same for k
-		cusparseOperation_t opA = char_trans_to_cusparse(transa);
-		cusparseOperation_t opB = char_trans_to_cusparse(transb);
-		unsigned m_b = k;
-		unsigned n_b = n;
-		if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-			m_b = n;
-			n_b = k;
-		}
-
-		cusparseScsrmm2rev(cusparse_handle, opA, opB, m, n_b, m_b, b->nnz, &alpha, a, lda, descr, b->values, b->rowPointers, b->columns, &beta, c, ldc);
-	}
 #undef char_trans_to_cusparse
-#undef char_trans_to_cusparse_rev
 
 	void dgmm(const char* mode, const int m, const int n, const float* A, int lda, const float* x, int incx, float* C,
 			int ldc) const {
