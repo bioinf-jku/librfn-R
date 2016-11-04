@@ -236,10 +236,22 @@ public:
 				) const {
 			cusparseOperation_t opA = char_trans_to_cusparse(transa);
 			cusparseOperation_t opB = char_trans_to_cusparse(transb);
+			sparseMatrix b_t;
 			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+				b_t.values = malloc(b->nnz * sizeof(float));
+				b_t.columns = malloc_t<int>(b->nnz * sizeof(int));
+				b_t.rowPointers = malloc_t<int>((n + 1)* sizeof(int));
+
 				// transpose B, because we will read rows instead of columns
-				sparseMatrix b_t;
+				printf("before %d %d \n", b->m, n);
+				printMatrixSP(b, (char*)0);
 				cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_t.values, b_t.columns, b_t.rowPointers, CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO);
+				b_t.nnz = b->nnz;
+				b_t.m = n;
+				printf("\n\n after\n");
+				printMatrixSP(&b_t, (char*)0);
+			} else {
+				b_t = *b;
 			}
 			int m_a = m;
 			int n_a = n;
@@ -255,25 +267,25 @@ public:
 			// for every row (these are the columns of original) of sparse matrix b
 				// memcpy the row together with column indices (simple with row pointers)
 				// use sgemvi to multiply matrix and sparse vector
-			int* bufferSize = std::malloc(sizeof(int));
-			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, transA, m_a, n_a, bufferSize));
+			int* bufferSize = (int*) std::malloc(sizeof(int));
+			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_t.nnz, bufferSize));
 			void* buffer = malloc(*bufferSize);
-			int* rowPointer = (int*)std::malloc(sizeof(int));
-			int* nextRowPointer = (int*)std::malloc(sizeof(int));
+			int* row_pointer = (int*)std::malloc(sizeof(int));
+			int* next_row_pointer = (int*)std::malloc(sizeof(int));
 
 			// for	every row
 			for(unsigned r = 0; r < n_a; ++r) {
 				// get row pointers
-				copy_to_host(&b->rowPointers[row], row_pointer, sizeof(int));
-				copy_to_host(&b->rowPointers[row + 1], next_row_pointer, sizeof(int));
+				copy_to_host(&b_t.rowPointers[r], row_pointer, sizeof(int));
+				copy_to_host(&b_t.rowPointers[r + 1], next_row_pointer, sizeof(int));
 
-				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, transA, m_a, n_a, &alpha, a, lda, *nextRowPointer - *rowPointer,
-						&b->values[*rowPointer], &b->columns[*nextRowPointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
+						&b_t.values[*row_pointer], &b_t.columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
 			}
 
 			free(buffer);
-			std::free(rowPointer);
-			std::free(nextRowPointer);
+			std::free(row_pointer);
+			std::free(next_row_pointer);
 		}
 #undef char_trans_to_cusparse
 
@@ -398,8 +410,8 @@ public:
 	void add_gauss_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const;
 
 // Useful for debugging
-	void printMatrixCM(const float* a, int n, int m, const char* fmt);
-	void printMatrixRM(const float* a, int n, int m, const char* fmt);
+	void printMatrixCM(const float* a, int n, int m, const char* fmt) const;
+	void printMatrixRM(const float* a, int n, int m, const char* fmt) const;
 
 	void printMatrixSP(const sparseMatrix* a, const char* fmt) const;
 
