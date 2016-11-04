@@ -219,8 +219,7 @@ public:
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
 
-	void gemm(
-				const char *transa, // OP ( A ) - dense matrix
+	void gemm(const char *transa, // OP ( A ) - dense matrix
 				const char *transb, // OP ( B ) - sparse matrix
 				const int m, 		// number of rows 	 of op ( A ) dense
 				const int n,		// number of columns of op ( B ) sparse
@@ -236,10 +235,13 @@ public:
 				) const {
 			cusparseOperation_t opA = char_trans_to_cusparse(transa);
 			cusparseOperation_t opB = char_trans_to_cusparse(transb);
+			sparseMatrix b_trans;
 			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
 				// transpose B, because we will read rows instead of columns
-				sparseMatrix b_t;
-				cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_t.values, b_t.columns, b_t.rowPointers, CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO);
+				CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
+						CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO));
+			} else {
+				b_trans = *b;
 			}
 			int m_a = m;
 			int n_a = n;
@@ -255,25 +257,25 @@ public:
 			// for every row (these are the columns of original) of sparse matrix b
 				// memcpy the row together with column indices (simple with row pointers)
 				// use sgemvi to multiply matrix and sparse vector
-			int* bufferSize = std::malloc(sizeof(int));
-			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, transA, m_a, n_a, bufferSize));
+			int *bufferSize = (int*) std::malloc(sizeof(int));
+			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, bufferSize));
 			void* buffer = malloc(*bufferSize);
-			int* rowPointer = (int*)std::malloc(sizeof(int));
-			int* nextRowPointer = (int*)std::malloc(sizeof(int));
+			int* row_pointer = (int*)std::malloc(sizeof(int));
+			int* next_row_pointer = (int*)std::malloc(sizeof(int));
 
 			// for	every row
 			for(unsigned r = 0; r < n_a; ++r) {
 				// get row pointers
-				copy_to_host(&b->rowPointers[row], row_pointer, sizeof(int));
-				copy_to_host(&b->rowPointers[row + 1], next_row_pointer, sizeof(int));
+				copy_to_host(&b_trans.rowPointers[r], row_pointer, sizeof(int));
+				copy_to_host(&b_trans.rowPointers[r + 1], next_row_pointer, sizeof(int));
 
-				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, transA, m_a, n_a, &alpha, a, lda, *nextRowPointer - *rowPointer,
-						&b->values[*rowPointer], &b->columns[*nextRowPointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
+						&b->values[*row_pointer], &b->columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
 			}
 
 			free(buffer);
-			std::free(rowPointer);
-			std::free(nextRowPointer);
+			std::free(row_pointer);
+			std::free(next_row_pointer);
 		}
 #undef char_trans_to_cusparse
 
