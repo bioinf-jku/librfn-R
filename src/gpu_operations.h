@@ -219,6 +219,8 @@ public:
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
 
+#define MAX_STREAMS 128 // documentation says 16, SO 32, 128 should be more than enough
+
 	void gemm(const char *transa, // OP ( A ) - dense matrix
 				const char *transb, // OP ( B ) - sparse matrix
 				const int m, 		// number of rows 	 of op ( A ) dense
@@ -262,9 +264,15 @@ public:
 			void* buffer = malloc(*bufferSize);
 			int* row_pointer = (int*)std::malloc(sizeof(int));
 			int* next_row_pointer = (int*)std::malloc(sizeof(int));
+			cudaStream_t streams[MAX_STREAMS];
 
 			// for	every row
 			for(unsigned r = 0; r < n_a; ++r) {
+				unsigned stream_ind = r % MAX_STREAMS;
+				if (r < MAX_STREAMS) {
+					CUDA_CALL(cudaStreamCreate(&streams[stream_ind]));
+				}
+				CUBLAS_CALL(cublasSetStream_v2(handle, streams[stream_ind]));
 				// get row pointers
 				copy_to_host(&b_trans.rowPointers[r], row_pointer, sizeof(int));
 				copy_to_host(&b_trans.rowPointers[r + 1], next_row_pointer, sizeof(int));
