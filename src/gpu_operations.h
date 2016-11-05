@@ -245,20 +245,13 @@ public:
 			} else {
 				b_trans = *b;
 			}
-			int m_a = m;
-			int n_a = n;
+			int m_a = m; // number of rows of A
+			int n_a = n; // number of columns of A
 			if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 				m_a = k;
 				n_a = m;
 			}
-			// m_a = number of rows of A
-			// n_a = number of columns of A
-			// if trans b == NON_TRANSPOSE
-			// then transpose matrix (this way we can easily get the rows of it
-			// otherwise leave it like it it, and we can copy rows and multiply it with matrix
-			// for every row (these are the columns of original) of sparse matrix b
-				// memcpy the row together with column indices (simple with row pointers)
-				// use sgemvi to multiply matrix and sparse vector
+
 			int *bufferSize = (int*) std::malloc(sizeof(int));
 			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, bufferSize));
 			void* buffer = malloc(*bufferSize);
