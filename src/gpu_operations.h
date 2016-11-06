@@ -219,8 +219,9 @@ public:
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
 
-	void gemm(
-				const char *transa, // OP ( A ) - dense matrix
+#define MAX_STREAMS 128 // documentation says 16, SO 32, 128 should be more than enough
+
+	void gemm(const char *transa, // OP ( A ) - dense matrix
 				const char *transb, // OP ( B ) - sparse matrix
 				const int m, 		// number of rows 	 of op ( A ) dense
 				const int n,		// number of columns of op ( B ) sparse
@@ -236,13 +237,18 @@ public:
 				) const {
 			cusparseOperation_t opA = char_trans_to_cusparse(transa);
 			cusparseOperation_t opB = char_trans_to_cusparse(transb);
+<<<<<<< HEAD
 			sparseMatrix b_t;
+=======
+			sparseMatrix b_trans;
+>>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
 			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
 				b_t.values = malloc(b->nnz * sizeof(float));
 				b_t.columns = malloc_t<int>(b->nnz * sizeof(int));
 				b_t.rowPointers = malloc_t<int>((n + 1)* sizeof(int));
 
 				// transpose B, because we will read rows instead of columns
+<<<<<<< HEAD
 				printf("before %d %d \n", b->m, n);
 				printMatrixSP(b, (char*)0);
 				cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_t.values, b_t.columns, b_t.rowPointers, CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO);
@@ -252,13 +258,20 @@ public:
 				printMatrixSP(&b_t, (char*)0);
 			} else {
 				b_t = *b;
+=======
+				CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
+						CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO));
+			} else {
+				b_trans = *b;
+>>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
 			}
-			int m_a = m;
-			int n_a = n;
+			int m_a = m; // number of rows of A
+			int n_a = n; // number of columns of A
 			if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 				m_a = k;
 				n_a = m;
 			}
+<<<<<<< HEAD
 			// m_a = number of rows of A
 			// n_a = number of columns of A
 			// if trans b == NON_TRANSPOSE
@@ -272,15 +285,37 @@ public:
 			void* buffer = malloc(*bufferSize);
 			int* row_pointer = (int*)std::malloc(sizeof(int));
 			int* next_row_pointer = (int*)std::malloc(sizeof(int));
+=======
+
+			int *bufferSize = (int*) std::malloc(sizeof(int));
+			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, bufferSize));
+			void* buffer = malloc(*bufferSize);
+			int* row_pointer = (int*)std::malloc(sizeof(int));
+			int* next_row_pointer = (int*)std::malloc(sizeof(int));
+			cudaStream_t streams[MAX_STREAMS];
+>>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
 
 			// for	every row
 			for(unsigned r = 0; r < n_a; ++r) {
+				unsigned stream_ind = r % MAX_STREAMS;
+				if (r < MAX_STREAMS) {
+					CUDA_CALL(cudaStreamCreate(&streams[stream_ind]));
+				}
+				CUBLAS_CALL(cublasSetStream_v2(handle, streams[stream_ind]));
 				// get row pointers
+<<<<<<< HEAD
 				copy_to_host(&b_t.rowPointers[r], row_pointer, sizeof(int));
 				copy_to_host(&b_t.rowPointers[r + 1], next_row_pointer, sizeof(int));
 
 				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
 						&b_t.values[*row_pointer], &b_t.columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+=======
+				copy_to_host(&b_trans.rowPointers[r], row_pointer, sizeof(int));
+				copy_to_host(&b_trans.rowPointers[r + 1], next_row_pointer, sizeof(int));
+
+				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
+						&b->values[*row_pointer], &b->columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+>>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
 			}
 
 			free(buffer);
