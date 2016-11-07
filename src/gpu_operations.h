@@ -237,90 +237,67 @@ public:
 				) const {
 			cusparseOperation_t opA = char_trans_to_cusparse(transa);
 			cusparseOperation_t opB = char_trans_to_cusparse(transb);
-<<<<<<< HEAD
-			sparseMatrix b_t;
-=======
 			sparseMatrix b_trans;
->>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
-			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-				b_t.values = malloc(b->nnz * sizeof(float));
-				b_t.columns = malloc_t<int>(b->nnz * sizeof(int));
-				b_t.rowPointers = malloc_t<int>((n + 1)* sizeof(int));
 
+			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+				b_trans.values = malloc(b->nnz * sizeof(float));
+				b_trans.columns = malloc_t<int>(b->nnz * sizeof(int));
+				b_trans.rowPointers = malloc_t<int>((n + 1)* sizeof(int));
+				b_trans.nnz = b->nnz;
+				b_trans.m = n;
 				// transpose B, because we will read rows instead of columns
-<<<<<<< HEAD
-				printf("before %d %d \n", b->m, n);
-				printMatrixSP(b, (char*)0);
-				cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_t.values, b_t.columns, b_t.rowPointers, CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO);
-				b_t.nnz = b->nnz;
-				b_t.m = n;
-				printf("\n\n after\n");
-				printMatrixSP(&b_t, (char*)0);
-			} else {
-				b_t = *b;
-=======
+				// TODO SYMBOLIC Is enough values stay same
 				CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
 						CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO));
 			} else {
 				b_trans = *b;
->>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
 			}
+			printf("B  inside \n");
+
+			printMatrixSP(&b_trans, 0);
 			int m_a = m; // number of rows of A
-			int n_a = n; // number of columns of A
+			int n_a = k; // number of columns of A
 			if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 				m_a = k;
 				n_a = m;
 			}
-<<<<<<< HEAD
-			// m_a = number of rows of A
-			// n_a = number of columns of A
-			// if trans b == NON_TRANSPOSE
-			// then transpose matrix (this way we can easily get the rows of it
-			// otherwise leave it like it it, and we can copy rows and multiply it with matrix
-			// for every row (these are the columns of original) of sparse matrix b
-				// memcpy the row together with column indices (simple with row pointers)
-				// use sgemvi to multiply matrix and sparse vector
-			int* bufferSize = (int*) std::malloc(sizeof(int));
-			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_t.nnz, bufferSize));
-			void* buffer = malloc(*bufferSize);
-			int* row_pointer = (int*)std::malloc(sizeof(int));
-			int* next_row_pointer = (int*)std::malloc(sizeof(int));
-=======
 
 			int *bufferSize = (int*) std::malloc(sizeof(int));
 			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, bufferSize));
+			printf("buffer sized %d\n", *bufferSize);
 			void* buffer = malloc(*bufferSize);
 			int* row_pointer = (int*)std::malloc(sizeof(int));
 			int* next_row_pointer = (int*)std::malloc(sizeof(int));
 			cudaStream_t streams[MAX_STREAMS];
->>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
 
 			// for	every row
 			for(unsigned r = 0; r < n_a; ++r) {
+				printf("Row number %d\n", r);
 				unsigned stream_ind = r % MAX_STREAMS;
 				if (r < MAX_STREAMS) {
 					CUDA_CALL(cudaStreamCreate(&streams[stream_ind]));
 				}
 				CUBLAS_CALL(cublasSetStream_v2(handle, streams[stream_ind]));
 				// get row pointers
-<<<<<<< HEAD
-				copy_to_host(&b_t.rowPointers[r], row_pointer, sizeof(int));
-				copy_to_host(&b_t.rowPointers[r + 1], next_row_pointer, sizeof(int));
-
-				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
-						&b_t.values[*row_pointer], &b_t.columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
-=======
 				copy_to_host(&b_trans.rowPointers[r], row_pointer, sizeof(int));
 				copy_to_host(&b_trans.rowPointers[r + 1], next_row_pointer, sizeof(int));
 
+				printf("from index %d to index %d\n", *row_pointer, *next_row_pointer);
+
+
+				printf("\n\n ssgemvi m %d, n %d, lda %d, nnz %d,", m_a, n_a, lda, *next_row_pointer - *row_pointer);
 				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
-						&b->values[*row_pointer], &b->columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
->>>>>>> 37b5e28b58bef965b3458e9b111f5f5b647b902f
+						&b_trans.values[*row_pointer], &b_trans.columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+
+				printf("After ssgemvi C:\n");
+				printMatrixCM(c, m_a, n, 0);
 			}
 
 			free(buffer);
 			std::free(row_pointer);
 			std::free(next_row_pointer);
+
+
 		}
 #undef char_trans_to_cusparse
 

@@ -252,10 +252,17 @@ TEST_CASE( "gemm sparse GPU 2nd variant", "[operations]" ) {
 	sparseMatrix* b = create_sparse_matrix_d(gpu_op, x, c, p, k, 4);
 	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
 
+	printf("A\n");
+	gpu_op.printMatrixCM(a_d, m, k, 0);
+	printf("B\n");
+	gpu_op.printMatrixSP(b, 0);
+
 	float* c_d = gpu_op.malloc(m * n * sizeof(float));
-	gpu_op.printMatrixCM(c_d, m, n, 0);
 
 	gpu_op.gemm("n", "n", m, n, k, 1.0, a_d, m, b, k, 0.0, c_d, m);
+
+	gpu_op.printMatrixCM(c_d, m, n, 0);
+
 
 	float* c_h = (float*) std::malloc(m * n * sizeof(float));
 
