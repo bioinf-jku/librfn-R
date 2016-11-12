@@ -46,6 +46,36 @@ int train_cpu_sparse(int X, float* W, float* P, const int n, const int m,
               const int input_noise_type, const int activation_type, const int apply_scaling,
               const int applyNewtonUpdate, unsigned long seed);
 
+
+/**
+ * Given a trained RFN, this will calculate the weights that are used to
+ * estimate the hidden activations.
+ *
+ * This needs access to the training data, as the W need to incorporate
+ * the scaling that would otherwise be done on the hidden activations.
+ * The scaling parameters have to be fitted on the training data's H.
+ *
+ * Note: All arguments are assumed to be in C-order (ie., row-major)
+ * and in host (ie., CPU) memory.
+ *
+ * @param X             [n, m] training data matrix, with 1 sample per row
+ * @param W             [k, m] RFN weight matrix
+ * @param P             [m] vector, contains Psi
+ * @param Wout          [k, m] output weight matrix
+ * @param n             number of training samples
+ * @param m             number of input features
+ * @param k             number of hidden units
+ */
+void calculate_W_cpu(const float* X, const float* W, const float* P, float* Wout,
+                     const int n, const int m, const int k,
+                     const int activation_type, const int apply_scaling, const float h_threshold);
+void calculate_W_cpu_sparse(int X, const float* W, const float* P, float* Wout,
+                     const int n, const int m, const int k,
+                     const int activation_type, const int apply_scaling, const float h_threshold);
+
+
+#ifndef NOGPU
+#include "sparse_matrix.h"
 /**
  * Trains an RFN network on the GPU.
  *
@@ -79,35 +109,15 @@ int train_gpu(const float* X_host, float* W_host, float* P_host, const int n,
               const int noise_type, const int activation_type, const int apply_scaling,
               const int applyNewtonUpdate, unsigned long seed, int gpu_id);
 
+int train_gpu_sparse(const sparseMatrix* X_host, float* W_host, float* P_host, const int n,
+              const int m, const int k, const int n_iter, int batch_size,
+              const float etaW, const float etaP, const float minP, const float h_threshold,
+              const float dropout_rate, const float input_noise_rate,
+              const float l2_weightdecay, const float l1_weightdecay,
+              const float momentum,
+              const int noise_type, const int activation_type, const int apply_scaling,
+              const int applyNewtonUpdate, unsigned long seed, int gpu_id);
 
-/**
- * Given a trained RFN, this will calculate the weights that are used to
- * estimate the hidden activations.
- *
- * This needs access to the training data, as the W need to incorporate
- * the scaling that would otherwise be done on the hidden activations.
- * The scaling parameters have to be fitted on the training data's H.
- *
- * Note: All arguments are assumed to be in C-order (ie., row-major)
- * and in host (ie., CPU) memory.
- *
- * @param X             [n, m] training data matrix, with 1 sample per row
- * @param W             [k, m] RFN weight matrix
- * @param P             [m] vector, contains Psi
- * @param Wout          [k, m] output weight matrix
- * @param n             number of training samples
- * @param m             number of input features
- * @param k             number of hidden units
- */
-void calculate_W_cpu(const float* X, const float* W, const float* P, float* Wout,
-                     const int n, const int m, const int k,
-                     const int activation_type, const int apply_scaling, const float h_threshold);
-void calculate_W_cpu_sparse(int X, const float* W, const float* P, float* Wout,
-                     const int n, const int m, const int k,
-                     const int activation_type, const int apply_scaling, const float h_threshold);
-
-
-#ifndef NOGPU
 /**
  * Given a trained RFN, this will calculate the weights that are used to
  * estimate the hidden activations.
@@ -131,6 +141,10 @@ void calculate_W_cpu_sparse(int X, const float* W, const float* P, float* Wout,
  *                      the GPU with the most free memory will be picked)
  */
 void calculate_W_gpu(const float* X, const float* W, const float* P, float* Wout,
+                     const int n, const int m, const int k,
+                     const int activation_type, const int apply_scaling, const float h_threshold,
+                     int gpu_id);
+void calculate_W_gpu_sparse(const sparseMatrix* X, const float* W, const float* P, float* Wout,
                      const int n, const int m, const int k,
                      const int activation_type, const int apply_scaling, const float h_threshold,
                      int gpu_id);
