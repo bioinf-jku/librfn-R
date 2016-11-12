@@ -287,7 +287,7 @@ public:
 
 				printf("\n\n ssgemvi m %d, n %d, lda %d, nnz %d,", m_a, n_a, lda, *next_row_pointer - *row_pointer);
 				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
-						&b_trans.values[*row_pointer], &b_trans.columns[*next_row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+						&b_trans.values[*row_pointer], &b_trans.columns[*row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
 
 				printf("After ssgemvi C:\n");
 				printMatrixCM(c, m_a, n, 0);
