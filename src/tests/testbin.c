@@ -15,6 +15,15 @@
 static double rand_unif(void) {
     return (rand())/(RAND_MAX+1.0);
 }
+
+static double rand_max(int max) {
+	return rand() % max;
+}
+
+int cmpfunc (const void * a, const void * b){
+   return ( *(int*)a - *(int*)b );
+}
+
 /*
 // generates random samples from a 0/1 Gaussian via Box-Mueller
 static double rand_normal(void) {
@@ -27,6 +36,7 @@ float time_diff(struct timeval *t2, struct timeval *t1) {
     return diff / 1000000.0f;
 }
 
+#define SPARSE
 
 
 int main(int argc, char** argv) {
@@ -48,20 +58,54 @@ int main(int argc, char** argv) {
     if (argc > 4)
         gpu_id = atoi(argv[4]);
 
+#ifdef SPARSE
+    int nnz = 10000;
+    float* X = (float*) malloc(nnz*sizeof(float));
+    for (int i = 0; i < nnz; ++i) {
+    	X[i] = 5.0f* rand_unif() - 0.5;
+    }
+    int* col = (int*) malloc(nnz*sizeof(int));
+    for (int i = 0; i < nnz; ++i) {
+    	col[i] = rand_max(m);
+    }
+    qsort(col, nnz, sizeof(int), cmpfunc);
 
+    int* rowPointer = (int*) malloc((n + 1) * sizeof(int));
+    rowPointer[0] = 0;
+    rowPointer[n] = nnz;
+    for (int i = 1; i < n; ++i) {
+    	rowPointer[i] = rand_max(n);
+    }
+    qsort(rowPointer, n + 1, sizeof(int), cmpfunc);
+
+    sparseMatrix sp;
+    sp.values = X;
+    sp.columns = col;
+    sp.rowPointers = rowPointer;
+    sp.m = n;
+    sp.nnz = nnz;
+#else
     float* X = (float*) malloc(n*m*sizeof(float));
+    for (int i = 0; i < n*m; ++i) {
+    	X[i] = 5.0f* rand_unif() - 0.5;
+    }
+#endif
+
+
     float* W = (float*) malloc(n*k*sizeof(float));
     float* P = (float*) malloc(m*sizeof(float));
 
-    for (int i = 0; i < n*m; ++i)
-        X[i] = 5.0f* rand_unif() - 0.5;
     for (int i = 0; i < n*k; ++i)
         W[i] = rand_unif() - 0.5;
 
     struct timeval t0, t1;
     gettimeofday(&t0, 0);
 
+#ifdef SPARSE
+    train_gpu_sparse(&sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+#else
     train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+#endif
     //train_cpu(X, W, P, n, m, k, n_iter, 0.1, 0.1, 1e-2, 0.0, 0.0, 32);
     gettimeofday(&t1, 0);
     printf("time for rfn: %3.4fs\n", time_diff(&t1, &t0));
