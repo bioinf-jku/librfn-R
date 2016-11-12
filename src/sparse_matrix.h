@@ -2,11 +2,15 @@
 #define SPARSE_MATRIX_H
 
 struct sparseMatrix {
-	float *values = (float*)-1;
-	int *columns = (int*)-1;
-	int *rowPointers = (int*)-1;
-	unsigned m = 0; // number of rows
-	unsigned nnz = 0; // number of nonzero elements
+	float *values;
+	int *columns;
+	int *rowPointers;
+	unsigned m; // number of rows
+	unsigned nnz; // number of nonzero elements
+};
+
+const struct sparseMatrix INVALID {
+	(float*)-1, (int*)-1, (int*)-1, 0, 0
 };
 
 #endif /* SPARSE_MATRIX_H */
