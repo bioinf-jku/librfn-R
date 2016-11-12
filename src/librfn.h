@@ -1,6 +1,10 @@
 #ifndef LIBRFN_H
 #define LIBRFN_H
 
+#ifndef NOGPU
+#include "sparse_matrix.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,7 +79,6 @@ void calculate_W_cpu_sparse(int X, const float* W, const float* P, float* Wout,
 
 
 #ifndef NOGPU
-#include "sparse_matrix.h"
 /**
  * Trains an RFN network on the GPU.
  *
