@@ -62,8 +62,11 @@ test: gpu_operations.o cpu_operations.o tests/tests.o tests/test_runner.o
 	g++ $(LDFLAGS) $^ -o $@ $(LIBS)
 	./test
 
-testbin: RFN.so tests/testbin.o
-	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lRFN
+testbin: librfn.so tests/testbin.o
+	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lrfn
+	
+librfn.so: RFN.so
+	ln -f RFN.so librfn.so
 
 RFN.so: $(OBJECTS)
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS) -shared

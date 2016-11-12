@@ -60,7 +60,8 @@ int main(int argc, char** argv) {
 
     struct timeval t0, t1;
     gettimeofday(&t0, 0);
-    train_gpu(X, W, P, n, m, k, n_iter, 0.1, 0.1, 1e-2, 0.0, 0.0, 32, gpu_id);
+
+    train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     //train_cpu(X, W, P, n, m, k, n_iter, 0.1, 0.1, 1e-2, 0.0, 0.0, 32);
     gettimeofday(&t1, 0);
     printf("time for rfn: %3.4fs\n", time_diff(&t1, &t0));
