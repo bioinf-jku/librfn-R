@@ -8,9 +8,9 @@ DEBUG = yes
 
 # BLAS/LAPACK implementation
 # Change these lines if you don't have an MKL but an other BLAS/LAPACK
-LIBS=-llapack -lblas
-#INCPATH=-I/opt/intel/mkl/include/
-#LIBS=-L/opt/intel/mkl/lib/intel64/ -lmkl_rt
+#LIBS=-llapack -lblas
+INCPATH=-I/opt/intel/mkl/include/
+LIBS=-L/opt/intel/mkl/lib/intel64/ -lmkl_rt
 
 
 GPUINC=-I/usr/local/cuda/include
@@ -48,15 +48,15 @@ NVCCFLAGS=--use_fast_math $(addprefix -Xcompiler , $(CXXFLAGS)) \
 
 
 
-SOURCES=librfn.cpp cpu_operations.cpp
-OBJECTS=librfn.o cpu_operations.o
+SOURCES=librfn.cpp cpu_operations.cpp rwrapper.cpp
+OBJECTS=librfn.o cpu_operations.o rwrapper.o
 
 ifeq ($(USEGPU),yes)
 	SOURCES+=gpu_operations.cu
 	OBJECTS+=gpu_operations.o
 endif
 
-all: $(SOURCES) librfn.so
+all: $(SOURCES) RFN.so
 
 test: gpu_operations.o cpu_operations.o tests/tests.o tests/test_runner.o
 	g++ $(LDFLAGS) $^ -o $@ $(LIBS)
@@ -65,13 +65,13 @@ test: gpu_operations.o cpu_operations.o tests/tests.o tests/test_runner.o
 testbin: librfn.so tests/testbin.o
 	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lrfn
 
-librfn.so: $(OBJECTS)
+RFN.so: $(OBJECTS)
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS) -shared
 
 gpu_operations.o: gpu_operations.cu
 	$(NVCC) $(NVCCFLAGS) -o $@ -c $<
 
 clean:
-	rm -rf *.o librfn.so tests/*.o
+	rm -rf *.o RFN.so tests/*.o 
 
 .PRECIOUS: test
