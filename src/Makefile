@@ -48,8 +48,8 @@ NVCCFLAGS=--use_fast_math $(addprefix -Xcompiler , $(CXXFLAGS)) \
 
 
 
-SOURCES=librfn.cpp cpu_operations.cpp rwrapper.cpp nist_spblas.cc
-OBJECTS=librfn.o cpu_operations.o rwrapper.o nist_spblas.o
+SOURCES=librfn.cpp cpu_operations.cpp nist_spblas.cc
+OBJECTS=librfn.o cpu_operations.o nist_spblas.o
 
 ifeq ($(USEGPU),yes)
 	SOURCES+=gpu_operations.cu
