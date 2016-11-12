@@ -9,7 +9,7 @@ struct sparseMatrix {
 	unsigned nnz; // number of nonzero elements
 };
 
-const struct sparseMatrix INVALID {
+const struct sparseMatrix INVALID = {
 	(float*)-1, (int*)-1, (int*)-1, 0, 0
 };
 
