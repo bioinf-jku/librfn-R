@@ -456,7 +456,7 @@ void calculate_W_gpu(const float* X, const float* W, const float* P, float* Wout
     return calculate_W<GPU_Operations, float *, const float *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
 }
 
-void calculate_W_gpu_sparse(sparseMatrix* X, const float* W, const float* P, float* Wout,
+void calculate_W_gpu_sparse(const sparseMatrix* X, const float* W, const float* P, float* Wout,
                      const int n, const int m, const int k, const int activation_type,
                      const int  apply_scaling, const float h_threshold, int gpu_id) {
     return calculate_W<GPU_Operations, sparseMatrix*, const sparseMatrix *>(X, W, P, Wout, n, m, k, activation_type, apply_scaling, h_threshold, gpu_id);
