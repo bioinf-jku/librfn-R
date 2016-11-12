@@ -324,6 +324,9 @@ sparseMatrix* GPU_Operations::to_device(const sparseMatrix* src, size_t size) co
 	CUDA_CALL(cudaMemcpy(dst->values, src->values, size_values, cudaMemcpyHostToDevice));
 	CUDA_CALL(cudaMemcpy(dst->columns, src->columns, size_columns, cudaMemcpyHostToDevice));
 	CUDA_CALL(cudaMemcpy(dst->rowPointers, src->rowPointers, size_rowPointers, cudaMemcpyHostToDevice));
+
+	dst->m = src->m;
+	dst->nnz = src->nnz;
 	return dst;
 }
 
