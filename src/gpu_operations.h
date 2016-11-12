@@ -271,7 +271,7 @@ public:
 			cudaStream_t streams[MAX_STREAMS];
 
 			// for	every row
-			for(unsigned r = 0; r < n_a; ++r) {
+			for(unsigned r = 0; r < b_trans.m; ++r) {
 				printf("Row number %d\n", r);
 				unsigned stream_ind = r % MAX_STREAMS;
 				if (r < MAX_STREAMS) {
