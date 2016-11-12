@@ -127,7 +127,7 @@ RcppExport SEXP train_rfn_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, S
    GetRNGstate();
 
    clock_t t = clock();
-   train_gpu_sparse(X_sparse, &W[0], &P[0], n, m, k, as<int>(n_iters), as<int>(batch_sizes), as<float>(etaWs),
+   train_gpu_sparse(&sparse, &W[0], &P[0], n, m, k, as<int>(n_iters), as<int>(batch_sizes), as<float>(etaWs),
       as<float>(etaPs), as<float>(minPs), as<float>(h_thresholds), as<float>(dropout_rates),
       as<float>(input_noise_rates), as<float>(l2_weightdecays), as<float>(l1_weightdecays),
       as<float>(momentums), as<int>(noise_types), as<int>(apply_relus), as<int>(apply_scalings),
