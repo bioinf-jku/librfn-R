@@ -416,6 +416,25 @@ int train_gpu(const float* X_host, float* W_host, float* P_host, const int n,
                     l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
     }
 }
+
+int train_gpu_sparse(const sparseMatrix* X_host, float* W_host, float* P_host, const int n,
+              const int m, const int k, const int n_iter, int batch_size,
+              const float etaW, const float etaP, const float minP, const float h_threshold,
+              const float dropout_rate, const float input_noise_rate,
+              const float l2_weightdecay, const float l1_weightdecay,
+              const float momentum,
+              const int input_noise_type, const int activation_type, const int apply_scaling,
+              const int applyNewtonUpdate, unsigned long seed, const int gpu_id) {
+    if (k > m) {
+        return train<GPU_Operations, true, sparseMatrix*, const sparseMatrix*>(X_host, W_host, P_host, n, m, k,
+                    n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                    l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+    } else {
+        return train<GPU_Operations, false, sparseMatrix*, const sparseMatrix*>(X_host, W_host, P_host, n, m, k,
+                    n_iter, batch_size, etaW, etaP, minP, h_threshold, dropout_rate, input_noise_rate,
+                    l2_weightdecay, l1_weightdecay, momentum, input_noise_type, activation_type, apply_scaling, applyNewtonUpdate, seed, gpu_id);
+    }
+}
 #endif
 
 void calculate_W_cpu(const float* X, const float* W, const float* P, float* Wout,
