@@ -48,8 +48,8 @@ NVCCFLAGS=--use_fast_math $(addprefix -Xcompiler , $(CXXFLAGS)) \
 
 
 
-SOURCES=librfn.cpp cpu_operations.cpp rwrapper.cpp
-OBJECTS=librfn.o cpu_operations.o rwrapper.o
+SOURCES=librfn.cpp cpu_operations.cpp rwrapper.cpp nist_spblas.cc
+OBJECTS=librfn.o cpu_operations.o rwrapper.o nist_spblas.o
 
 ifeq ($(USEGPU),yes)
 	SOURCES+=gpu_operations.cu
@@ -62,8 +62,8 @@ test: gpu_operations.o cpu_operations.o tests/tests.o tests/test_runner.o
 	g++ $(LDFLAGS) $^ -o $@ $(LIBS)
 	./test
 
-testbin: librfn.so tests/testbin.o
-	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lrfn
+testbin: RFN.so tests/testbin.o
+	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lRFN
 
 RFN.so: $(OBJECTS)
 	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS) -shared
@@ -72,6 +72,6 @@ gpu_operations.o: gpu_operations.cu
 	$(NVCC) $(NVCCFLAGS) -o $@ -c $<
 
 clean:
-	rm -rf *.o RFN.so tests/*.o 
+	rm -rf *.o RFN.so tests/*.o
 
 .PRECIOUS: test

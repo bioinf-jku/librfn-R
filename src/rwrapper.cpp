@@ -3,7 +3,10 @@
 
 #include "librfn.h"
 #include "sparse_matrix_op.h"
+
+#ifndef NOGPU
 #include "sparse_matrix.h"
+#endif
 
 #include <cstdio>
 #include "use_R_impl.h"
@@ -99,10 +102,12 @@ RcppExport SEXP train_rfn_cpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, S
    END_RCPP
 }
 
+#ifndef NOGPU
+
 RcppExport SEXP train_rfn_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP n_iters,
    SEXP batch_sizes, SEXP etaWs, SEXP etaPs, SEXP minPs, SEXP h_thresholds, SEXP dropout_rates,
    SEXP input_noise_rates, SEXP l2_weightdecays, SEXP l1_weightdecays, SEXP momentums,
-   SEXP noise_types, SEXP apply_relus, SEXP apply_scalings, SEXP apply_newton_updates, SEXP seeds)
+   SEXP noise_types, SEXP apply_relus, SEXP apply_scalings, SEXP apply_newton_updates, SEXP seeds, SEXP gpu_id)
 {
    BEGIN_RCPP
 
@@ -131,7 +136,7 @@ RcppExport SEXP train_rfn_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, S
       as<float>(etaPs), as<float>(minPs), as<float>(h_thresholds), as<float>(dropout_rates),
       as<float>(input_noise_rates), as<float>(l2_weightdecays), as<float>(l1_weightdecays),
       as<float>(momentums), as<int>(noise_types), as<int>(apply_relus), as<int>(apply_scalings),
-      as<int>(apply_newton_updates), as<int>(seeds));
+      as<int>(apply_newton_updates), as<int>(seeds), as<int>(gpu_id));
    t = clock() - t;
 
    PutRNGstate();
@@ -150,6 +155,7 @@ RcppExport SEXP train_rfn_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, S
    END_RCPP
 }
 
+#endif
 
 RcppExport SEXP calculate_W(SEXP Xs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP activations, 
    SEXP apply_scalings, SEXP h_thresholds)
@@ -206,6 +212,47 @@ RcppExport SEXP calculate_W_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEX
    
    END_RCPP
 }
+
+#ifndef NOGPU
+
+RcppExport SEXP _calculate_W_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP activations,
+   SEXP apply_scalings, SEXP h_thresholds, SEXP gpu_id)
+{
+   BEGIN_RCPP
+
+   int n = as<int>(ns);
+   int m = as<int>(ms);
+   int k = as<int>(ks);
+
+
+   std::vector<int> rowv = as<std::vector<int> >(rowvs);
+   std::vector<int> colv = as<std::vector<int> >(colvs);
+
+   std::vector<float> X = as<std::vector<float> >(Xs);
+   std::vector<float> W = as<std::vector<float> >(Ws);
+   std::vector<float> P = as<std::vector<float> >(Ps);
+   std::vector<float> Wout(k*m);
+
+   sparseMatrix sparse;
+   sparse.m = n;
+   sparse.nnz = rowv[n];
+   sparse.values = &X[0];
+   sparse.columns = &colv[0];
+   sparse.rowPointers = &rowv[0];
+
+   calculate_W_gpu_sparse(&sparse, &W[0], &P[0], &Wout[0], n, m, k, as<int>(activations),
+      as<int>(apply_scalings), as<float>(h_thresholds), as<float>(gpu_id));
+
+   NumericVector Wout_ret = wrap(Wout);
+   Wout_ret.attr("dim") = Dimension(m, k);
+
+   return Wout_ret;
+
+   END_RCPP
+}
+
+#endif
+
 
 #include <mkl_spblas.h>
 #include <mkl_trans.h>

@@ -402,7 +402,7 @@ public:
 	void leaky_relu(float* x, const float value, const unsigned size) const;
 	void tanh(float* x, const unsigned size) const;
 	void sigmoid(float* x, const unsigned size) const;
-	void soft_threshold(float* x, const float alpha, const unsigned size) const;
+	void soft_threshold(float* x, const float alpha, const int size) const;
 	void invsqrt(float* s, const unsigned n) const;
 
 	void invert(float* X, const unsigned size) const;

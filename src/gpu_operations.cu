@@ -387,7 +387,7 @@ void GPU_Operations::tanh(float* x, const unsigned size) const {
 	assert(!cudaGetLastError());
 }
 
-void GPU_Operations::soft_threshold(float* x, const float alpha, const unsigned size) const {
+void GPU_Operations::soft_threshold(float* x, const float alpha, const int size) const {
 	int threads, blocks;
 	get_grid_sizes(size, &threads, &blocks);
 	softthreshold_eltw<<<blocks, threads>>>(x, alpha, size);
