@@ -117,14 +117,14 @@ RcppExport SEXP train_rfn_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, S
    std::vector<float> W = as<std::vector<float> >(Ws);
    std::vector<float> P = as<std::vector<float> >(Ps);
 
-   GetRNGstate();
-
    sparseMatrix sparse;
    sparse.m = n;
    sparse.nnz = rowv[n];
    sparse.values = &X[0];
    sparse.columns = &colv[0];
    sparse.rowPointers = &rowv[0];
+
+   GetRNGstate();
 
    clock_t t = clock();
    train_gpu_sparse(X_sparse, &W[0], &P[0], n, m, k, as<int>(n_iters), as<int>(batch_sizes), as<float>(etaWs),
