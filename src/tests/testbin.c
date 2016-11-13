@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
         gpu_id = atoi(argv[4]);
 
 #ifdef SPARSE
-    int nnz = 10000;
+    int nnz = 1;
     float* X = (float*) malloc(nnz*sizeof(float));
     for (int i = 0; i < nnz; ++i) {
     	X[i] = 5.0f* rand_unif() - 0.5;
@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     rowPointer[0] = 0;
     rowPointer[n] = nnz;
     for (int i = 1; i < n; ++i) {
-    	rowPointer[i] = rand_max(n);
+    	rowPointer[i] = rand_max(nnz);
     }
     qsort(rowPointer, n + 1, sizeof(int), cmpfunc);
 
@@ -84,6 +84,7 @@ int main(int argc, char** argv) {
     sp.rowPointers = rowPointer;
     sp.m = n;
     sp.nnz = nnz;
+
 #else
     float* X = (float*) malloc(n*m*sizeof(float));
     for (int i = 0; i < n*m; ++i) {
@@ -110,6 +111,10 @@ int main(int argc, char** argv) {
     gettimeofday(&t1, 0);
     printf("time for rfn: %3.4fs\n", time_diff(&t1, &t0));
     free(X);
+#ifdef SPARSE
+    free(col);
+    free(rowPointer);
+#endif
     free(W);
     free(P);
     return 0;

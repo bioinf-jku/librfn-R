@@ -284,6 +284,11 @@ GPU_Operations::GPU_Operations(const int n, const int m, const int k, unsigned l
 		cudaDeviceReset();
 		throw std::runtime_error("cuSparse error");
 	}
+
+	for (int i = 0; i < MAX_STREAMS; i++) {
+		CUDA_CALL(cudaStreamCreate(&streams[i]));
+	}
+	currentStream = -1;
 }
 
 GPU_Operations::~GPU_Operations() {
@@ -294,6 +299,10 @@ GPU_Operations::~GPU_Operations() {
 	}
 	CUSOLVER_CALL(cusolverDnDestroy(cudense_handle));
 	CUBLAS_CALL(cublasDestroy(handle));
+	for (int i = 0; i < MAX_STREAMS; i++) {
+		CUDA_CALL(cudaStreamSynchronize(streams[i]));
+		CUDA_CALL(cudaStreamDestroy(streams[i]));
+	}
 }
 
 float* GPU_Operations::to_device(const float* src, size_t size) const {

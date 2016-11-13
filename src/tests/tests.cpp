@@ -251,18 +251,9 @@ TEST_CASE( "gemm sparse GPU 2nd variant", "[operations]" ) {
 
 	sparseMatrix* b = create_sparse_matrix_d(gpu_op, x, c, p, k, 4);
 	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
-
-	printf("A\n");
-	gpu_op.printMatrixCM(a_d, m, k, 0);
-	printf("B\n");
-	gpu_op.printMatrixSP(b, 0);
-
 	float* c_d = gpu_op.malloc(m * n * sizeof(float));
 
 	gpu_op.gemm("n", "n", m, n, k, 1.0, a_d, m, b, k, 0.0, c_d, m);
-
-	gpu_op.printMatrixCM(c_d, m, n, 0);
-
 
 	float* c_h = (float*) std::malloc(m * n * sizeof(float));
 
@@ -275,6 +266,54 @@ TEST_CASE( "gemm sparse GPU 2nd variant", "[operations]" ) {
 	std::free(c_h);
 	gpu_op.free(a_d);
 	free_sparse_matrix_d(gpu_op, b);
+}
+
+TEST_CASE( "get_batch sparse", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float x[] = { 5.0, 1.0, 3.0, -2.0 };
+	int c[] = {0, 1, 2, 3};
+	int p[] = {0, 0, 1, 2, 4, 4};
+
+	float x_e[] = {1.0, 3.0, -2.0};
+	int c_e[] = {1, 2, 3};
+	int p_e[] = {0, 1, 3, 3};
+
+	int m = 5;
+	int n = 4;
+
+	sparseMatrix* b = create_sparse_matrix_d(gpu_op, x, c, p, m, 4);
+	printf("CSa");
+
+	gpu_op.printMatrixSP(b, 0);
+
+	printf("\n");
+	sparseMatrix* b_batch = gpu_op.get_batch(b, 0, 1, 2);
+
+	gpu_op.printMatrixSP(b_batch, 0);
+
+	float* x_d = (float*) std::malloc(b_batch->nnz * sizeof(float));
+	int* c_d = (int*) std::malloc(b_batch->nnz * sizeof(int));
+	int* p_d = (int*) std::malloc((b_batch->m + 1) * sizeof(int));
+	gpu_op.copy_to_host(b_batch->values, x_d, b_batch->nnz * sizeof(float));
+	gpu_op.copy_to_host(b_batch->columns, c_d, b_batch->nnz * sizeof(int));
+	gpu_op.copy_to_host(b_batch->rowPointers, p_d, (b_batch->m + 1)* sizeof(int));
+
+	for (unsigned i = 0; i < b_batch->nnz; i++) {
+		CHECK(x_d[i] == x_e[i]);
+	}
+	for (unsigned i = 0; i < b_batch->nnz; i++) {
+		CHECK(c_d[i] == c_e[i]);
+	}
+	for (unsigned i = 0; i < b_batch->m + 1; i++) {
+		CHECK(p_d[i] == p_e[i]);
+	}
+
+	std::free(x_d);
+	std::free(c_d);
+	std::free(p_d);
+	//gpu_op.free(a_d);
+	//free_sparse_matrix_d(gpu_op, b);
 }
 
 TEST_CASE( "gemm dense GPU", "[operations]" ) {

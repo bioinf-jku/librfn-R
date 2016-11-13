@@ -79,7 +79,7 @@ static const char* cublasErrorString(cublasStatus_t error) {
 #ifndef DNDEBUG
 
 #define CUDA_CALL(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = false) {
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort = true) {
 	if (code != cudaSuccess) {
 		fprintf(stderr, "CUDA Error: %s %s:%d\n", cudaGetErrorString(code), file, line);
 		if (abort)
@@ -144,6 +144,9 @@ inline void cusolverAssert(cusolverStatus_t code, const char *file, int line) {
 #define CUSPARSE_CALL(ans) (ans)
 #endif
 
+#define MAX_STREAMS 16 // documentation says 16, SO 32, 128 should be more than enough
+
+
 class GPU_Operations {
 	cublasHandle_t handle;
 	curandState* rng_state;
@@ -151,6 +154,9 @@ class GPU_Operations {
 	cusparseHandle_t cusparse_handle;
 	std::map<int, float*> buffer_map; // keeps track of buffers allocated for potrf
 	int* devinfo; // cuSOLVER error reporting
+	cudaStream_t streams[MAX_STREAMS];
+
+	unsigned currentStream;
 public:
 
 	float* ones;
@@ -165,6 +171,28 @@ public:
 		CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost));
 		free(src);
 		return dst;
+	}
+
+	void next_stream() {
+		currentStream += 1;
+		if (currentStream == MAX_STREAMS) {
+			currentStream = 0;
+		}
+		CUBLAS_CALL(cublasSetStream_v2(handle, streams[currentStream]));
+	}
+
+	void synchronize_stream() const {
+		CUDA_CALL(cudaStreamSynchronize(streams[currentStream]));
+	}
+
+	void synchronize_all_streams() const {
+		for (unsigned i = 0; i < MAX_STREAMS; ++i) {
+			CUDA_CALL(cudaStreamSynchronize(streams[i]));
+		}
+	}
+
+	void default_stream() const {
+		CUBLAS_CALL(cublasSetStream_v2(handle, NULL));
 	}
 
 	int* to_host(int* src, int* dst, size_t size) const {
@@ -201,10 +229,6 @@ public:
 		CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
 		CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
 
-		// Difference in API
-		// 		cusparse: m number of rows of sparse matrix     A
-		//		cublas:   m number of rows of        matrix op( A )
-		// same for k
 		cusparseOperation_t opA = char_trans_to_cusparse(transa);
 		cusparseOperation_t opB = char_trans_to_cusparse(transb);
 		unsigned m_a = m;
@@ -219,42 +243,25 @@ public:
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
 
-#define MAX_STREAMS 128 // documentation says 16, SO 32, 128 should be more than enough
 
-	void gemm(const char *transa, // OP ( A ) - dense matrix
-				const char *transb, // OP ( B ) - sparse matrix
-				const int m, 		// number of rows 	 of op ( A ) dense
-				const int n,		// number of columns of op ( B ) sparse
-				const int k, 		// inner dimension number of rows of OP ( B ), columns of OP ( A )
-				const float alpha,  // scaling factor
-				const float *a,  	// dense matrix
-				const int lda,		// leading dimension
-				const sparseMatrix* b, // sparse matrix
-				const int ldb, 		// leading dimension (ignored)
-				const float beta, 	// scaling to c
-				float *c,			// C matrix result
-				const int ldc		// leading dimension of C
-				) const {
+	void gemm(const char *transa, const char *transb, const int m, const int n, const int k,
+				const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
+				const float beta, float *c,	const int ldc) {
 			cusparseOperation_t opA = char_trans_to_cusparse(transa);
 			cusparseOperation_t opB = char_trans_to_cusparse(transb);
 			sparseMatrix b_trans;
 
 			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-				b_trans.values = malloc(b->nnz * sizeof(float));
+				b_trans.values = b->values;
 				b_trans.columns = malloc_t<int>(b->nnz * sizeof(int));
 				b_trans.rowPointers = malloc_t<int>((n + 1)* sizeof(int));
 				b_trans.nnz = b->nnz;
 				b_trans.m = n;
-				// transpose B, because we will read rows instead of columns
-				// TODO SYMBOLIC Is enough values stay same
 				CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
-						CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO));
+						CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
 			} else {
 				b_trans = *b;
 			}
-			printf("B  inside \n");
-
-			printMatrixSP(&b_trans, 0);
 			int m_a = m; // number of rows of A
 			int n_a = k; // number of columns of A
 			if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
@@ -264,39 +271,35 @@ public:
 
 			int *bufferSize = (int*) std::malloc(sizeof(int));
 			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, bufferSize));
-			printf("buffer sized %d\n", *bufferSize);
 			void* buffer = malloc(*bufferSize);
-			int* row_pointer = (int*)std::malloc(sizeof(int));
-			int* next_row_pointer = (int*)std::malloc(sizeof(int));
-			cudaStream_t streams[MAX_STREAMS];
+			int* row_pointers = (int*)std::malloc((b_trans.m + 1) * sizeof(int));
+			copy_to_host(b_trans.rowPointers, row_pointers, (b_trans.m + 1) * sizeof(int));
 
-			// for	every row
 			for(unsigned r = 0; r < b_trans.m; ++r) {
-				printf("Row number %d\n", r);
-				unsigned stream_ind = r % MAX_STREAMS;
-				if (r < MAX_STREAMS) {
-					CUDA_CALL(cudaStreamCreate(&streams[stream_ind]));
+
+				int row_pointer = row_pointers[r];
+				int nnz = row_pointers[r + 1] - row_pointer;
+
+				if (nnz == 0) {
+					// I think this should be empty
+					// TODO maybe need to add result to existing C
+					//fill(&c[r * ldc], m_a * sizeof(float), 0.0);
+				} else if (nnz > 0) {
+					next_stream();
+					CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, nnz,
+						&b_trans.values[row_pointer], &b_trans.columns[row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+				} else {
+					printf("Internal error");
+					exit(1);
 				}
-				CUBLAS_CALL(cublasSetStream_v2(handle, streams[stream_ind]));
-				// get row pointers
-				copy_to_host(&b_trans.rowPointers[r], row_pointer, sizeof(int));
-				copy_to_host(&b_trans.rowPointers[r + 1], next_row_pointer, sizeof(int));
-
-				printf("from index %d to index %d\n", *row_pointer, *next_row_pointer);
-
-
-				printf("\n\n ssgemvi m %d, n %d, lda %d, nnz %d,", m_a, n_a, lda, *next_row_pointer - *row_pointer);
-				CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, *next_row_pointer - *row_pointer,
-						&b_trans.values[*row_pointer], &b_trans.columns[*row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
-
-				printf("After ssgemvi C:\n");
-				printMatrixCM(c, m_a, n, 0);
 			}
+			synchronize_all_streams();
+			default_stream();
 
+			free(b_trans.columns);
+			free(b_trans.rowPointers);
 			free(buffer);
-			std::free(row_pointer);
-			std::free(next_row_pointer);
-
+			std::free(row_pointers);
 
 		}
 #undef char_trans_to_cusparse
@@ -365,13 +368,22 @@ public:
 	}
 
 	void free(void* ptr) const {
-		if (ptr != 0)
+		if (ptr != 0 && ptr != &INVALID)
 			CUDA_CALL(cudaFree(ptr));
 	}
 
 	void free_devicememory(void* ptr) const {
 		if (ptr != 0)
 			CUDA_CALL(cudaFree(ptr));
+	}
+
+	void free_devicememory(sparseMatrix* matrix) {
+		if (matrix != 0) {
+			free(matrix->columns);
+			free(matrix->values);
+			free(matrix->rowPointers);
+			std::free(matrix);
+		}
 	}
 
 	float* malloc(size_t size) const {
@@ -429,7 +441,7 @@ public:
 
 	template<typename T>
 	T init_invalid(void) {
-		return (typeid(T) == typeid(sparseMatrix*) ? (T) -1 : (T) 0);
+		return (typeid(T) == typeid(sparseMatrix*) ? (T) &INVALID : (T) 0);
 	}
 
 	template<typename T>
@@ -451,10 +463,10 @@ public:
 	}
 
 	sparseMatrix* memcpy_matrix(sparseMatrix* dest, sparseMatrix* src, int nrows_to_copy, int src_ncol, int first_row = 0) const {
-		unsigned fromIndex = 0;
-		unsigned toIndex   = 0;
-		CUDA_CALL(cudaMemcpy(&fromIndex, src->rowPointers + first_row,                 sizeof(int), cudaMemcpyDeviceToHost));
-		CUDA_CALL(cudaMemcpy(&toIndex  , src->rowPointers + first_row + nrows_to_copy, sizeof(int), cudaMemcpyDeviceToHost));
+		int fromIndex = 0;
+		int toIndex   = 0;
+		CUDA_CALL(cudaMemcpy(&fromIndex, &src->rowPointers[first_row],                 sizeof(int), cudaMemcpyDeviceToHost));
+		CUDA_CALL(cudaMemcpy(&toIndex  , &src->rowPointers[first_row + nrows_to_copy], sizeof(int), cudaMemcpyDeviceToHost));
 
 		dest->nnz = (toIndex - fromIndex);
 		dest->m = nrows_to_copy;
@@ -497,15 +509,14 @@ public:
 	}
 
 	void free_sparse(sparseMatrix* a) {
+		// see get batch
 		if (handle_valid(a)) {
-			free(a->columns);
 			free(a->rowPointers);
-			free(a->values);
 		}
 	}
 
 	bool handle_valid(sparseMatrix* a) {
-		return a->values != (float*)-1;
+		return a != &INVALID;
 	}
 
 	float* get_batch(const float* X, int ncol, int batch_num, int batch_size) {
@@ -513,9 +524,24 @@ public:
 		return (float*) &X[batch_num * batch_size * ncol];
 	}
 
-	sparseMatrix* get_batch(sparseMatrix* X, int ldx, int batch_num, int batch_size) {
+	sparseMatrix* get_batch(sparseMatrix* X, int ncol, int batch_num, int batch_size) {
+		// ncol can be ignored
+		// batch_size number of rows
+		int from = batch_num * batch_size;
+		int nrows = batch_size;
 		sparseMatrix* dest = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
-		memcpy_matrix(dest, X, batch_size, batch_num * batch_size);
+		int fromIndex = 0;
+		int toIndex   = 0;
+		CUDA_CALL(cudaMemcpy(&fromIndex, &X->rowPointers[from],                 sizeof(int), cudaMemcpyDeviceToHost));
+		CUDA_CALL(cudaMemcpy(&toIndex  , &X->rowPointers[from + nrows], sizeof(int), cudaMemcpyDeviceToHost));
+
+		dest->nnz = (toIndex - fromIndex);
+		dest->m = nrows;
+		dest->values = &X->values[fromIndex];
+		dest->columns = &X->columns[fromIndex];
+		dest->rowPointers = (int*)malloc((nrows + 1) * sizeof(int));
+		memcpy(dest->rowPointers, &X->rowPointers[from], (nrows + 1) * sizeof(int));
+		subtract_first_element(dest->rowPointers, nrows + 1);
 		return dest;
 	}
 

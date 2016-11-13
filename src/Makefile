@@ -19,8 +19,8 @@ GPUSO=-lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse
 
 
 ifeq ($(DEBUG), no)
-	CFLAGS=-O3 -DNDEBUG -Wall -fPIC -march=native
-	LDFLAGS=-O3 -flto -Wall -fPIC
+	CFLAGS=-O3 -DNDEBUG -Wall -fPIC -march=native -g
+	LDFLAGS=-O3 -flto -Wall -fPIC -g
 else
 	CFLAGS=-g -Wall -fPIC -march=native $(INCPATH)
 	LDFLAGS= -g -Wall -fPIC $(LIBPATH) $(LIBS)
@@ -63,16 +63,16 @@ test: gpu_operations.o cpu_operations.o tests/tests.o tests/test_runner.o
 	./test
 
 testbin: librfn.so tests/testbin.o
-	gcc tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lrfn
+	gcc -g tests/testbin.o -o testbin $(LIBPATH) $(LDFLAGS) -L./ -lrfn
 	
 librfn.so: RFN.so
 	ln -f RFN.so librfn.so
 
 RFN.so: $(OBJECTS)
-	$(CXX) $(LDFLAGS) $^ -o $@ $(LIBS) -shared
+	$(CXX) -g $(LDFLAGS) $^ -o $@ $(LIBS) -shared
 
 gpu_operations.o: gpu_operations.cu
-	$(NVCC) $(NVCCFLAGS) -o $@ -c $<
+	$(NVCC) -g $(NVCCFLAGS) -o $@ -c $<
 
 clean:
 	rm -rf *.o RFN.so tests/*.o
