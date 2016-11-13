@@ -264,46 +264,26 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             }
         }
     }
-    printf("1");
     op.free(dP);
-    printf("2");
     op.free(C);
-    printf("3");
     op.free(dW);
-    printf("4");
     op.free(Sinv);
-    printf("5");
     op.free(U);
-    printf("6");
     op.free(Schol);
-    printf("7");
     op.free(S);
-    printf("8");
     op.free(H);
-    printf("9");
     op.free(variance_H);
-    printf("10");
     op.free(Wout);
-    printf("11");
     op.free(WWPinv);
-    printf("12");
     op.free(WWPchol);
-    printf("13");
     op.free(WPWchol);
-    printf("14");
     op.free(WPWinv);
-    printf("15");
     op.free(Wtmp);
-    printf("16");
     op.free(Xtmp);
-    printf("17");
     op.free(XCov_diag);
-    printf("18");
     op.free_devicememory(X);
 
-    printf("19");
     op.to_host(W, W_host, m*k*sizeof(float));
-    printf("20");
     op.to_host(P, P_host, m*sizeof(float));
     return 0;
 }
