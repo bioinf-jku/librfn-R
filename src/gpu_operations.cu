@@ -560,7 +560,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 			const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
-			const float beta, float *c,	const int ldc) const {
+			const float beta, float *c,	const int ldc) {
 	cusparseOperation_t opA = char_trans_to_cusparse(transa);
 	cusparseOperation_t opB = char_trans_to_cusparse(transb);
 	sparseMatrix b_trans;
