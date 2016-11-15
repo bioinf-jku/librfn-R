@@ -240,8 +240,10 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                 op.dropout(H, batch_size*k, dropout_rate);
             }
             op.gemm("n", "t", k, k, batch_size, 1.0f/batch_size, H, k, H, k, 0.0f, S, k);
+            op.printm("S", S, k, k);
             if (isMoreHiddensThanFeatures) {
                 op.gemm("t", "n", k, k, m, -1.0f, Wout, m, W, m, 1.0f, S, k);
+                op.printm("S", S, k, k);
                 op.axpy(k, 1.0f, op.ones, 0, S, k+1);
             } else {
                 op.axpy(k*k, 1.0f, WPWinv, 1, S, 1);
@@ -249,6 +251,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
 
             XType XBatch = op.get_batch(X, m, cur_batch, batch_size);
             op.gemm("n", "t", m, k, batch_size, 1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
+            op.printm("U", S, m, k);
 
             if (applyNewtonUpdate) {
                 op.axpy(k, 1e-10, op.ones, 0, S, k+1);
