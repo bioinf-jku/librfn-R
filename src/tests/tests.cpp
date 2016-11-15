@@ -268,18 +268,18 @@ TEST_CASE( "gemm sparse GPU 2nd variant", "[operations]" ) {
 	free_sparse_matrix_d(gpu_op, b);
 }
 
-TEST_CASE( "gemm sparse GPU 2nd variant2", "[operations]" ) {
+TEST_CASE( "gemm sparse GPU 2nd variant transpose", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
 	float x[] = { 5.0, 1.0, 3.0, -2.0 };
 	int c[] = {0, 1, 2, 3};
 	int p[] = {0, 0, 1, 2, 4, 4};
 
-	float a[] = { 1.0, 1.0, 2.0, 2.0, 3.0, 2.0, 4.0, 1.0, 0.0, 3.0 };
-	float e[] = { 10.0, 10.0, 3.0, 2.0, 12.0, 3.0, -8.0, -2.0 };
+	float a[] = { 1.0, 1.0, 2.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0, 3.0, 3.0, 4.0, 5.0, 0.0, 3.0 };
+	float e[] = { 5.0, 0.0, 20.0, 2.0, 2.0, 5.0, 2.0, 0.0, 0.0, 3.0, 0.0, 0.0 };
 
 
-	int m = 2;
+	int m = 3;
 	int n = 4;
 	int k = 5;
 
@@ -287,7 +287,7 @@ TEST_CASE( "gemm sparse GPU 2nd variant2", "[operations]" ) {
 	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
 	float* c_d = gpu_op.malloc(m * n * sizeof(float));
 
-	gpu_op.gemm("n", "n", m, n, k, 1.0, a_d, m, b, k, 0.0, c_d, m);
+	gpu_op.gemm("t", "n", m, n, k, 1.0, a_d, k, b, k, 0.0, c_d, m);
 
 	float* c_h = (float*) std::malloc(m * n * sizeof(float));
 
