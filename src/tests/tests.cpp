@@ -317,14 +317,8 @@ TEST_CASE( "get_batch sparse", "[operations]" ) {
 	int n = 4;
 
 	sparseMatrix* b = create_sparse_matrix_d(gpu_op, x, c, p, m, 4);
-	printf("CSa");
 
-	gpu_op.printMatrixSP(b, 0);
-
-	printf("\n");
 	sparseMatrix* b_batch = gpu_op.get_batch(b, 0, 1, 2);
-
-	gpu_op.printMatrixSP(b_batch, 0);
 
 	float* x_d = (float*) std::malloc(b_batch->nnz * sizeof(float));
 	int* c_d = (int*) std::malloc(b_batch->nnz * sizeof(int));
