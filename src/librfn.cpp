@@ -208,7 +208,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             {
                /* in case of sparse X, this is a copy operation! */
                printf("X\n m %d, cur_b %d, b_size %d\n", m, cur_batch, batch_size);
-               op.printm(X, n, m);
+               op.printm("X", X, n, m);
             	Xnoise = op.get_batch(X, m, cur_batch, batch_size);
             	printf("Batch\n");
             	op.printm("Xnoise", Xnoise, batch_size, m);
