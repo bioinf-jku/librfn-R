@@ -465,7 +465,7 @@ TEST_CASE( "gemm dense GPU 2nd variant transpose and addition", "[operations]" )
 	int k = 5;
 
 	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
-	float* b_d = gpu_op.to_device(a, n * k * sizeof(float));
+	float* b_d = gpu_op.to_device(b, n * k * sizeof(float));
 	float* c_d = gpu_op.malloc(m * n * sizeof(float));
 	gpu_op.fill(c_d, m, 2.0f);
 	gpu_op.fill(&c_d[m], (n - 1) * m, 4.0f);
