@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
 	srand(123);
 
     int n = 10;
-    int m = 20;
+    int m = 4;
     int k = 6;
     int n_iter = 10;
     int gpu_id = -1;
@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
     if (argc > 4)
         gpu_id = atoi(argv[4]);
 
-    int nnz = 200;
+    int nnz = 10;
     float* X = (float*) malloc(nnz*sizeof(float));
     for (int i = 0; i < nnz; ++i) {
     	X[i] = 5.0f* rand_unif() - 0.5;
