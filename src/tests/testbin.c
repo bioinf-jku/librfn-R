@@ -29,7 +29,7 @@ float* sparse_to_dense(sparseMatrix* sparse, int n, int m) {
 	memset(dense, 0, n*m*sizeof(float));
 	for (unsigned i = 0; i < sparse->m; i++) {
 		for (unsigned j = sparse->rowPointers[i]; j < sparse->rowPointers[i + 1]; j++) {
-			dense[i + sparse->columns[j]*m] = sparse->values[j];
+			dense[i + sparse->columns[j]*n] = sparse->values[j];
 		}
 	}
 	return dense;
