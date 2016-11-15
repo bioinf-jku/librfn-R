@@ -435,9 +435,9 @@ TEST_CASE( "gemm dense GPU 2", "[operations]" ) {
 
 	float* c_h = (float*) std::malloc(m * m * sizeof(float));
 
-	gpu_op.to_host(c_d, c_h, 2 * 5 * sizeof(float));
+	gpu_op.to_host(c_d, c_h, 2 * 4 * sizeof(float));
 
-	for (unsigned i = 0; i < 2 * 5; i++) {
+	for (unsigned i = 0; i < 2 * 4; i++) {
 		CHECK(c_h[i] == e[i]);
 	}
 
