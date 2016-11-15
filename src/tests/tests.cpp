@@ -419,9 +419,9 @@ TEST_CASE( "gemm dense GPU 2", "[operations]" ) {
 
 	float e[] = { 10.0, 10.0, 3.0, 2.0, 12.0, 3.0, -8.0, -2.0 };
 
-	int m = 5;
-	int n = 2;
-	int k = 4;
+	int m = 2;
+	int n = 4;
+	int k = 5;
 
 	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
 	float* b_d = gpu_op.to_device(b, k * n * sizeof(float));
