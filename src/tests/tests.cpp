@@ -427,9 +427,9 @@ TEST_CASE( "gemm dense GPU 2", "[operations]" ) {
 	float* b_d = gpu_op.to_device(b, k * n * sizeof(float));
 	float* c_d = gpu_op.malloc(n * m * sizeof(float));
 
-	gpu_op.printMatrixCM(a, m, k, 0);
+	gpu_op.printMatrixCM(a_d, m, k, 0);
 	printf("times\n");
-	gpu_op.printMatrixCM(b, k, n, 0);
+	gpu_op.printMatrixCM(b_d, k, n, 0);
 	gpu_op.gemm("n", "n", m, n, k, 1.0, a_d, m, b_d, k, 0.0, c_d, m);
 	gpu_op.printMatrixCM(c_d, m, n, 0);
 
