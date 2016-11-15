@@ -41,7 +41,17 @@ template <class OP>
 int calculate_W_impl_invertMxM(OP& op, const float* W, const float* P, float* Wout,
                           const int k, const int m,
                           float* WWPchol, float* WWPinv) {
-    op.gemm("n","t", m, m, k, 1.0f, W, m, W, m, 0.0f, WWPchol, m);
+	printf("%s\n", __LINE__);
+	printf("W\n");
+	op.printMatrixCM(W, m, k, 0);
+
+	op.gemm("n","t", m, m, k, 1.0f, W, m, W, m, 0.0f, WWPchol, m);
+
+	printf("WWPchol\n");
+	op.printMatrixCM(WWPchol,m, k, 0);
+
+	printf("P\n");
+	op.prints(P, m);
     op.axpy(m, 1.0f, P, 1, WWPchol, m+1);
     op.fill_eye(WWPinv, m);
     op.posv("u", m, m, WWPchol, m, WWPinv, m);
@@ -55,12 +65,19 @@ template <class OP>
 int calculate_W_impl_invertKxK(OP& op, const float* W, const float* Pinv, float* Wout,
                            const int k, const int m,
                            float* Wtmp, float* WPWchol, float* WPWinv) {
+	printf("%s\n", __LINE__);
+	printf("W\n");
+	op.printMatrixCM(W, m, k, 0);
+
     op.dgmm("l", m, k, W, m, Pinv, 1, Wtmp, m);
     op.gemm("t", "n", k, k, m, 1.0f, W, m, Wtmp, m, 0.0f, WPWchol, k);
     op.axpy(k, 1.0f, op.ones, 1, WPWchol, k+1);
     op.fill_eye(WPWinv, k);
     op.posv("u", k, k, WPWchol, k, WPWinv, k);
     op.gemm("n", "t", m, k, k, 1.0f, Wtmp, m, WPWinv, k, 0.0f, Wout, m);
+
+    printf("Wout\n");
+    op.printMatrixCM(Wout, m, k, 0);
     return 0;
 }
 
@@ -146,11 +163,13 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
         op.calculate_column_variance(X, batch_size, m, XCov_diag);
     
     for (int cur_iter = 0; cur_iter < n_iter; ++cur_iter) {
+    	printf("iter %d\n", cur_iter);
         if (cur_iter % 25 == 0) {
             gettimeofday(&t1, 0);
             printf("epoch: %4d  (time: %6.2fs)\n", cur_iter, time_diff(&t1, &t0));
         }
-        for (int cur_batch = 0; cur_batch < n_batches; ++cur_batch){
+        for (int cur_batch = 0; cur_batch < n_batches; ++cur_batch) {
+        	printf("batch %d\n");
             
             if (isMoreHiddensThanFeatures) {
                 calculate_W_impl_invertMxM<OP>(op, W, P, Wout, k, m, WWPchol, WWPinv);
