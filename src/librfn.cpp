@@ -214,6 +214,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             printf("n %d, m %d, k %d, lda %d, ldb %d\n", k, batch_size, m, m, m);
             op.printm("Wout", Wout, k, m);
             op.printm("Xnoise", Xnoise, m, batch_size);
+            op.printf("H before", H, k, batch_size);
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
 
             op.printm("H", H, k, batch_size);
