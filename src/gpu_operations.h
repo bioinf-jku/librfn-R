@@ -361,6 +361,9 @@ public:
 	void printMatrixRM(const float* a, int n, int m, const char* fmt) const;
 
 	void printMatrixSP(const sparseMatrix* a, const char* fmt) const;
+	void printMatrixRM(const sparseMatrix* a, int n, int m, const char* fmt) const {
+		printMatrixSPM(a, n, m, fmt);
+	}
 
 	void printMatrixSPM(const sparseMatrix* a, int n, int m, const char* fmt) const;
 
