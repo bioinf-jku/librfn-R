@@ -355,4 +355,8 @@ public:
 	static void printMatrixRM(const spmat_t a, int n, int m, const char *fmt) {
 		NIST_SPBLAS::print(a);
 	}
+
+	void prints(float* f, unsigned l) const {}
+
+	void printsu(int* f, unsigned l) const {}
 };

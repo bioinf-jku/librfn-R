@@ -223,7 +223,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
 
             XType XBatch = op.get_batch(X, m, cur_batch, batch_size);
             op.gemm("n", "t", m, k, batch_size, 1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
-            
+
             if (applyNewtonUpdate) {
                 op.axpy(k, 1e-10, op.ones, 0, S, k+1);
                 op.memcpy(Schol, S, k*k*sizeof(float));

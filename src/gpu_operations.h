@@ -156,7 +156,7 @@ class GPU_Operations {
 	int* devinfo; // cuSOLVER error reporting
 	cudaStream_t streams[MAX_STREAMS];
 
-	unsigned currentStream;
+	int currentStream;
 public:
 
 	float* ones;
@@ -178,21 +178,21 @@ public:
 		if (currentStream == MAX_STREAMS) {
 			currentStream = 0;
 		}
-		CUBLAS_CALL(cublasSetStream_v2(handle, streams[currentStream]));
+		//CUBLAS_CALL(cublasSetStream_v2(handle, streams[currentStream]));
 	}
 
 	void synchronize_stream() const {
-		CUDA_CALL(cudaStreamSynchronize(streams[currentStream]));
+		//CUDA_CALL(cudaStreamSynchronize(streams[currentStream]));
 	}
 
 	void synchronize_all_streams() const {
-		for (unsigned i = 0; i < MAX_STREAMS; ++i) {
-			CUDA_CALL(cudaStreamSynchronize(streams[i]));
-		}
+		//for (unsigned i = 0; i < MAX_STREAMS; ++i) {
+		//	CUDA_CALL(cudaStreamSynchronize(streams[i]));
+		//}
 	}
 
 	void default_stream() const {
-		CUBLAS_CALL(cublasSetStream_v2(handle, NULL));
+		//CUBLAS_CALL(cublasSetStream_v2(handle, NULL));
 	}
 
 	int* to_host(int* src, int* dst, size_t size) const {
@@ -231,18 +231,16 @@ public:
 
 		cusparseOperation_t opA = char_trans_to_cusparse(transa);
 		cusparseOperation_t opB = char_trans_to_cusparse(transb);
-		unsigned m_a = m;
 		unsigned n_a = k;
 		if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-			m_a = k;
 			n_a = m;
 		}
 
-		CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, m_a, n, n_a,
+		CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, a->m, n, n_a,
 				a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
+
 		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 	}
-
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 				const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
@@ -281,6 +279,7 @@ public:
 				int nnz = row_pointers[r + 1] - row_pointer;
 
 				if (nnz == 0) {
+					printf("nnz0\n");
 					// I think this should be empty
 					// TODO maybe need to add result to existing C
 					//fill(&c[r * ldc], m_a * sizeof(float), 0.0);
