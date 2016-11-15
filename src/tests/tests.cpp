@@ -411,6 +411,37 @@ TEST_CASE( "gemm dense GPU", "[operations]" ) {
 	gpu_op.free(a_d);
 }
 
+TEST_CASE( "gemm dense GPU 2", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float a[] = { 1.0, 1.0, 2.0, 2.0, 3.0, 2.0, 4.0, 1.0, 0.0, 3.0 };
+	float b[] = { 0.0, 0.0, 0.0, 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 3.0, -2.0, 0.0, 0.0, 0.0, 0.0};
+
+	float e[] = { 10.0, 10.0, 3.0, 2.0, 12.0, 3.0, -8.0, -2.0 };
+
+	int m = 5;
+	int n = 2;
+	int k = 4;
+
+	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
+	float* b_d = gpu_op.to_device(b, k * n * sizeof(float));
+	float* c_d = gpu_op.malloc(n * m * sizeof(float));
+
+	gpu_op.gemm("n", "n", m, n, k, 1.0, a_d, m, b_d, k, 0.0, c_d, m);
+
+	float* c_h = (float*) std::malloc(m * m * sizeof(float));
+
+	gpu_op.to_host(c_d, c_h, 2 * 5 * sizeof(float));
+
+	for (unsigned i = 0; i < 2 * 5; i++) {
+		CHECK(c_h[i] == e[i]);
+	}
+
+	std::free(c_h);
+	gpu_op.free(b_d);
+	gpu_op.free(a_d);
+}
+
 // the pointer-to-memberfunction thingy is pretty ugly :(
 template<class OP>
 float* test_scale(OP& op, void (OP::*scalefunc)(float*, unsigned int, unsigned int, float*) const, float* X, float* s,
