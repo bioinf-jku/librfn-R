@@ -250,7 +250,7 @@ public:
 		int info = 0;
 		CUSOLVER_CALL(cusolverDnSpotrf_bufferSize(cudense_handle, ul, n, a, lda, &bufsize));
 
-		float* buffer = get_buffer(bufsize * sizeof(float));
+		float* buffer = (float*) get_buffer(bufsize * sizeof(float));
 
 		CUSOLVER_CALL(cusolverDnSpotrf(cudense_handle, ul, n, a, lda, buffer, bufsize, devinfo));
 		CUDA_CALL(cudaMemcpy(&info, devinfo, sizeof(info), cudaMemcpyDeviceToHost));
