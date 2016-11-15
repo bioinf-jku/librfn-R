@@ -356,7 +356,7 @@ public:
 		NIST_SPBLAS::print(a);
 	}
 
-	void prints(float* f, unsigned l) const {}
+	void prints(const float* f, unsigned l) const {}
 
-	void printsu(int* f, unsigned l) const {}
+	void printsu(const int* f, unsigned l) const {}
 };

@@ -482,7 +482,7 @@ public:
 		return dest;
 	}
 
-	void prints(float* f, unsigned l) const {
+	void prints(const float* f, unsigned l) const {
 			float* src = (float*) std::malloc(l * sizeof(float));
 			copy_to_host(f, src, l * sizeof(float));
 			for (unsigned i = 0; i < l; ++i) {
@@ -492,7 +492,7 @@ public:
 			std::free(src);
 		}
 
-	void printsu(int* f, unsigned l) const {
+	void printsu(const int* f, unsigned l) const {
 		int* src = (int*) std::malloc(l * sizeof(int));
 			copy_to_host(f, src, l * sizeof(int));
 			for (unsigned i = 0; i < l; ++i) {
