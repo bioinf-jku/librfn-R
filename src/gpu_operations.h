@@ -279,7 +279,7 @@ public:
 				int nnz = row_pointers[r + 1] - row_pointer;
 
 				if (nnz == 0) {
-					printf("nnz0\n");
+					//printf("nnz0\n");
 					// I think this should be empty
 					// TODO maybe need to add result to existing C
 					//fill(&c[r * ldc], m_a * sizeof(float), 0.0);
