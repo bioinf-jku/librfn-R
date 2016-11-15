@@ -219,89 +219,13 @@ public:
 		CUBLAS_CALL(cublasSgemm(handle, ta, tb, m, n, k, &alpha, a, lda, b, ldb, &beta, c, ldc));
 	}
 
-#define char_trans_to_cusparse(tr) (tr[0] == 'T' || tr[0] == 't' ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE)
-
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
 			const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
-			const int ldc) const {
-		cusparseMatDescr_t descr;
-		CUSPARSE_CALL(cusparseCreateMatDescr(&descr));
-		CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
-		CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
-
-		cusparseOperation_t opA = char_trans_to_cusparse(transa);
-		cusparseOperation_t opB = char_trans_to_cusparse(transb);
-		unsigned n_a = k;
-		if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-			n_a = m;
-		}
-
-		CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, a->m, n, n_a,
-				a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
-
-		CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
-	}
+			const int ldc) const;
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 				const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
-				const float beta, float *c,	const int ldc) {
-			cusparseOperation_t opA = char_trans_to_cusparse(transa);
-			cusparseOperation_t opB = char_trans_to_cusparse(transb);
-			sparseMatrix b_trans;
-
-			if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-				b_trans.values = b->values;
-				b_trans.columns = malloc_t<int>(b->nnz * sizeof(int));
-				b_trans.rowPointers = malloc_t<int>((n + 1)* sizeof(int));
-				b_trans.nnz = b->nnz;
-				b_trans.m = n;
-				CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
-						CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
-			} else {
-				b_trans = *b;
-			}
-			int m_a = m; // number of rows of A
-			int n_a = k; // number of columns of A
-			if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-				m_a = k;
-				n_a = m;
-			}
-
-			int *bufferSize = (int*) std::malloc(sizeof(int));
-			CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, bufferSize));
-			void* buffer = malloc(*bufferSize);
-			int* row_pointers = (int*)std::malloc((b_trans.m + 1) * sizeof(int));
-			copy_to_host(b_trans.rowPointers, row_pointers, (b_trans.m + 1) * sizeof(int));
-
-			for(unsigned r = 0; r < b_trans.m; ++r) {
-
-				int row_pointer = row_pointers[r];
-				int nnz = row_pointers[r + 1] - row_pointer;
-
-				if (nnz == 0) {
-					//printf("nnz0\n");
-					// I think this should be empty
-					// TODO maybe need to add result to existing C
-					//fill(&c[r * ldc], m_a * sizeof(float), 0.0);
-				} else if (nnz > 0) {
-					next_stream();
-					CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, nnz,
-						&b_trans.values[row_pointer], &b_trans.columns[row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
-				} else {
-					printf("Internal error");
-					exit(1);
-				}
-			}
-			synchronize_all_streams();
-			default_stream();
-
-			free(b_trans.columns);
-			free(b_trans.rowPointers);
-			free(buffer);
-			std::free(row_pointers);
-
-		}
-#undef char_trans_to_cusparse
+				const float beta, float *c,	const int ldc) const;
 
 	void dgmm(const char* mode, const int m, const int n, const float* A, int lda, const float* x, int incx, float* C,
 			int ldc) const {
