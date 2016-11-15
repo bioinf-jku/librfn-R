@@ -48,7 +48,7 @@ int calculate_W_impl_invertMxM(OP& op, const float* W, const float* P, float* Wo
 	op.gemm("n","t", m, m, k, 1.0f, W, m, W, m, 0.0f, WWPchol, m);
 
 	printf("WWPchol\n");
-	op.printMatrixCM(WWPchol,m, k, 0);
+	op.printMatrixCM(WWPchol,m, m, 0);
 
 	printf("P\n");
 	op.prints(P, m);
