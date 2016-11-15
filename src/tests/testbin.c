@@ -66,9 +66,10 @@ int main(int argc, char** argv) {
     int k = 6;
     int n_iter = 10;
     int gpu_id = -1;
+    int sparse = 0;
 
     if (argc > 1)
-        k = atoi(argv[1]);
+    	sparse = atoi(argv[1]);
 
     if (argc > 2)
         n_iter = atoi(argv[2]);
@@ -130,22 +131,24 @@ int main(int argc, char** argv) {
     //gettimeofday(&t1, 0);
     //printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
 
-    gettimeofday(&t0, 0);
-    int retval = train_gpu(de, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
-    gettimeofday(&t1, 0);
-    printf("time for gpu rfn(%d): %3.4fs\n", retval, time_diff(&t1, &t0));
+    if (sparse == 0 || sparse > 1) {
+    	gettimeofday(&t0, 0);
+    	int retval = train_gpu(de, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	gettimeofday(&t1, 0);
+    	printf("time for gpu rfn(%d): %3.4fs\n", retval, time_diff(&t1, &t0));
 
-    printf("W1\n");
-    printMat(W1, m, k);
+    	printf("W\n");
+    	printMat(W1, m, k);
+    }
+    if (sparse == 1 || sparse > 1) {
+    	gettimeofday(&t0, 0);
+    	train_gpu_sparse(&sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	gettimeofday(&t1, 0);
+    	printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
 
-    gettimeofday(&t0, 0);
-    train_gpu_sparse(&sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
-    gettimeofday(&t1, 0);
-    printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
-
-    printf("W2\n");
-    printMat(W2, m, k);
-
+    	printf("W\n");
+    	printMat(W2, m, k);
+    }
     free(X);
     free(col);
     free(rowPointer);
