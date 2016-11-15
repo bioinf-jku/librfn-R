@@ -56,6 +56,9 @@ int calculate_W_impl_invertMxM(OP& op, const float* W, const float* P, float* Wo
     op.fill_eye(WWPinv, m);
     op.posv("u", m, m, WWPchol, m, WWPinv, m);
     op.gemm("t", "n", m, k, m, 1.0f, WWPinv, m, W, m, 0.0f, Wout, m);
+
+    printf("Wout\n");
+    op.printMatrixCM(Wout, m, k, 0);
     return 0;
 }
 
