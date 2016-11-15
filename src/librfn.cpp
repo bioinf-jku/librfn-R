@@ -41,7 +41,7 @@ template <class OP>
 int calculate_W_impl_invertMxM(OP& op, const float* W, const float* P, float* Wout,
                           const int k, const int m,
                           float* WWPchol, float* WWPinv) {
-	printf("%s\n", __LINE__);
+	printf("%s\n", __FUNCTION__);
 	printf("W\n");
 	op.printMatrixCM(W, m, k, 0);
 
@@ -65,7 +65,7 @@ template <class OP>
 int calculate_W_impl_invertKxK(OP& op, const float* W, const float* Pinv, float* Wout,
                            const int k, const int m,
                            float* Wtmp, float* WPWchol, float* WPWinv) {
-	printf("%s\n", __LINE__);
+	printf("%s\n", __FUNCTION__);
 	printf("W\n");
 	op.printMatrixCM(W, m, k, 0);
 
@@ -169,7 +169,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             printf("epoch: %4d  (time: %6.2fs)\n", cur_iter, time_diff(&t1, &t0));
         }
         for (int cur_batch = 0; cur_batch < n_batches; ++cur_batch) {
-        	printf("batch %d\n");
+        	printf("batch %d\n", cur_batch);
             
             if (isMoreHiddensThanFeatures) {
                 calculate_W_impl_invertMxM<OP>(op, W, P, Wout, k, m, WWPchol, WWPinv);
