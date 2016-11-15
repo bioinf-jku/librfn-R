@@ -152,7 +152,7 @@ class GPU_Operations {
 	curandState* rng_state;
 	cusolverDnHandle_t cudense_handle;
 	cusparseHandle_t cusparse_handle;
-	std::map<int, float*> buffer_map; // keeps track of buffers allocated for potrf
+	std::map<size_t, void*> buffer_map; // keeps track of buffers allocated for potrf
 	int* devinfo; // cuSOLVER error reporting
 	cudaStream_t streams[MAX_STREAMS];
 
@@ -250,19 +250,24 @@ public:
 		int info = 0;
 		CUSOLVER_CALL(cusolverDnSpotrf_bufferSize(cudense_handle, ul, n, a, lda, &bufsize));
 
-		// See if we already have a buffer of correct size, otherwise allocate
-		float* buffer = 0;
-		auto it = buffer_map.find(bufsize);
-		if (it != buffer_map.end()) {
-			buffer = it->second;
-		} else {
-			buffer = malloc(bufsize * sizeof(float));
-			buffer_map[bufsize] = buffer;
-		}
+		float* buffer = get_buffer(bufsize * sizeof(float));
 
 		CUSOLVER_CALL(cusolverDnSpotrf(cudense_handle, ul, n, a, lda, buffer, bufsize, devinfo));
 		CUDA_CALL(cudaMemcpy(&info, devinfo, sizeof(info), cudaMemcpyDeviceToHost));
 		return info;
+	}
+
+	void* get_buffer(size_t bufsize) {
+		// See if we already have a buffer of correct size, otherwise allocate
+		void* buffer = 0;
+		auto it = buffer_map.find(bufsize);
+		if (it != buffer_map.end()) {
+			buffer = it->second;
+		} else {
+			buffer = malloc(bufsize);
+			buffer_map[bufsize] = buffer;
+		}
+		return buffer;
 	}
 
 	int potrs(const char *uplo, int n, int nrhs, float * a, int lda, float *b, int ldb) const {

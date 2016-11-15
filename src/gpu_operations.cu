@@ -621,9 +621,10 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		n_a = m;
 	}
 
-	int *bufferSize = (int*) std::malloc(sizeof(int));
-	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, bufferSize));
-	void* buffer = malloc(*bufferSize);
+	int bufsize;
+	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, &bufferSize));
+	void* buffer = get_buffer(bufsize);
+
 	int* row_pointers = (int*)std::malloc((b_trans.m + 1) * sizeof(int));
 	copy_to_host(b_trans.rowPointers, row_pointers, (b_trans.m + 1) * sizeof(int));
 
@@ -648,7 +649,6 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 
 	free(b_trans.columns);
 	free(b_trans.rowPointers);
-	free(buffer);
 	std::free(row_pointers);
 
 }
