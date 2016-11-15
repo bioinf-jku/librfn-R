@@ -302,6 +302,42 @@ TEST_CASE( "gemm sparse GPU 2nd variant transpose", "[operations]" ) {
 	free_sparse_matrix_d(gpu_op, b);
 }
 
+TEST_CASE( "gemm sparse GPU 2nd variant transpose and addition", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float x[] = { 5.0, 1.0, 3.0, -2.0 };
+	int c[] = {0, 1, 2, 3};
+	int p[] = {0, 0, 1, 2, 4, 4};
+
+	float a[] = { 1.0, 1.0, 2.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0, 3.0, 3.0, 4.0, 5.0, 0.0, 3.0 };
+	float e[] = { 6.0, 1.0, 21.0, 4.0, 4.0, 7.0, 5.0, 2.0, 2.0, 0.0, 2.0, 2.0 };
+
+
+	int m = 3;
+	int n = 4;
+	int k = 5;
+
+	sparseMatrix* b = create_sparse_matrix_d(gpu_op, x, c, p, k, 4);
+	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
+	float* c_d = gpu_op.malloc(m * n * sizeof(float));
+	gpu_op.fill(c_d, m, 2.0f);
+	gpu_op.fill(&c_d[m], (n - 1) * m, 4.0f);
+
+	gpu_op.gemm("t", "n", m, n, k, 1.0, a_d, k, b, k, 0.5, c_d, m);
+
+	float* c_h = (float*) std::malloc(m * n * sizeof(float));
+
+	gpu_op.to_host(c_d, c_h, m * n * sizeof(float));
+
+	for (unsigned i = 0; i < n * m; i++) {
+		CHECK(c_h[i] == e[i]);
+	}
+
+	std::free(c_h);
+	gpu_op.free(a_d);
+	free_sparse_matrix_d(gpu_op, b);
+}
+
 TEST_CASE( "get_batch sparse", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
