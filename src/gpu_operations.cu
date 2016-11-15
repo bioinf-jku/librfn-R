@@ -622,7 +622,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	}
 
 	int bufsize;
-	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, &bufferSize));
+	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, &bufsize));
 	void* buffer = get_buffer(bufsize);
 
 	int* row_pointers = (int*)std::malloc((b_trans.m + 1) * sizeof(int));
