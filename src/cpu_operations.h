@@ -359,4 +359,14 @@ public:
 	void prints(const float* f, unsigned l) const {}
 
 	void printsu(const int* f, unsigned l) const {}
+
+	void printm(const char* name, const spmat_t a, int n, int m) const {
+		printf("%s\n", name);
+		printMatrixCM(a, n, m, 0);
+	}
+
+	void printm(const char* name, const float* a, int n, int m) const {
+		printf("%s\n", name);
+		printMatrixCM(a, n, m, 0);
+	}
 };

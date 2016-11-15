@@ -186,6 +186,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             XType Xnoise;
             
             if (input_noise_type && input_noise_rate > 0.0f) {
+            	printf("memcpy matrix\n");
                 op.memcpy_matrix(Xtmp, X, batch_size, m, cur_batch);
                 switch(input_noise_type) {
                     case 1:  // dropout noise
@@ -209,7 +210,10 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                Xnoise = op.get_batch(X, m, cur_batch, batch_size);
             }
             
+            printf("gemm\n");
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
+
+            op.printm("H", H, k, batch_size);
 
             if (!(input_noise_type && input_noise_rate > 0.0f))
             {

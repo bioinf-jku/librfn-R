@@ -544,4 +544,13 @@ public:
 		return dest;
 	}
 
+	void printm(const char* name, const sparseMatrix *a, int n, int m) const {
+		printf("%s\n", name);
+		printMatrixSP(a, 0);
+	}
+
+	void printm(const char* name, const float* a, int n, int m) const {
+		printf("%s\n", name);
+		printMatrixCM(a, n, m, 0);
+	}
 };
