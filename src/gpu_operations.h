@@ -225,7 +225,7 @@ public:
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 				const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
-				const float beta, float *c,	const int ldc) const;
+				const float beta, float *c,	const int ldc);
 
 	void dgmm(const char* mode, const int m, const int n, const float* A, int lda, const float* x, int incx, float* C,
 			int ldc) const {
