@@ -475,7 +475,6 @@ public:
 
 	void printm(const char* name, const sparseMatrix *a, int n, int m) const {
 		printf("%s (sparse)\n", name);
-		printMatrixSP(a, 0);
 		printMatrixSPM(a, n, m, 0);
 	}
 
