@@ -494,6 +494,44 @@ void GPU_Operations::printMatrixSP(const sparseMatrix *a, const char* fmt) const
 	std::free(tmp_pointers);
 }
 
+void GPU_Operations::printMatrixSPM(const sparseMatrix *a, int n, int m, const char* fmt) const {
+	const char* format = fmt == 0 ? "%1.3f " : fmt;
+	size_t size_values = a->nnz * sizeof(float);
+	size_t size_columns = a->nnz * sizeof(int);
+	size_t size_pointers = (a->m + 1)* sizeof(int);
+
+	float* tmp_vals = (float*) std::malloc(size_values);
+	int* tmp_cols = (int*) std::malloc(size_columns);
+	int* tmp_pointers = (int*) std::malloc(size_pointers);
+
+	CUDA_CALL(cudaMemcpy(tmp_vals, a->values, size_values, cudaMemcpyDeviceToHost));
+	CUDA_CALL(cudaMemcpy(tmp_cols, a->columns, size_columns, cudaMemcpyDeviceToHost));
+	CUDA_CALL(cudaMemcpy(tmp_pointers, a->rowPointers, size_pointers, cudaMemcpyDeviceToHost));
+
+	for (unsigned i = 0; i < n; i++) {
+		unsigned rowPointer = tmp_pointers[i];
+		unsigned nnz = tmp_pointers[i + 1] - rowPointer;
+		unsigned found = 0;
+		for (unsigned j = 0; j < m; j++) {
+			if (found < nnz) {
+				if (j == tmp_cols[rowPointer + found]) {
+					printf(format, tmp_vals[rowPointer + found]);
+					found++;
+				} else {
+					printf(format, 0.0f);
+				}
+			} else {
+				printf(format, 0.0f);
+			}
+		}
+		printf("\n");
+	}
+	printf("\n");
+	std::free(tmp_vals);
+	std::free(tmp_cols);
+	std::free(tmp_pointers);
+}
+
 void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
 	int threads, blocks;
 	get_grid_sizes(len, &threads, &blocks);

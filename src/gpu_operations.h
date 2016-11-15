@@ -362,6 +362,8 @@ public:
 
 	void printMatrixSP(const sparseMatrix* a, const char* fmt) const;
 
+	void printMatrixSPM(const sparseMatrix* a, int n, int m, const char* fmt) const;
+
 	template<typename T>
 	T init_invalid(void) {
 		return (typeid(T) == typeid(sparseMatrix*) ? (T) &INVALID : (T) 0);
@@ -469,8 +471,8 @@ public:
 	}
 
 	void printm(const char* name, const sparseMatrix *a, int n, int m) const {
-		printf("%s\n", name);
-		printMatrixSP(a, 0);
+		printf("%s (sparse)\n", name);
+		printMatrixSPM(a, n, m, 0);
 	}
 
 	void printm(const char* name, const float* a, int n, int m) const {
