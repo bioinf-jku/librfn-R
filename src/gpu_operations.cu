@@ -595,10 +595,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		int nnz = row_pointers[r + 1] - row_pointer;
 
 		if (nnz == 0) {
-			//printf("nnz0\n");
-			// I think this should be empty
-			// TODO maybe need to add result to existing C
-			//fill(&c[r * ldc], m_a * sizeof(float), 0.0);
+			CUBLAS_CALL(cublasSscal_v2(handle, n, &beta, &c[r * ldc], 1));
 		} else if (nnz > 0) {
 			next_stream();
 			CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, nnz,
