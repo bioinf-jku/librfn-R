@@ -442,6 +442,39 @@ TEST_CASE( "gemm dense GPU 2", "[operations]" ) {
 	gpu_op.free(a_d);
 }
 
+TEST_CASE( "gemm dense GPU 2nd variant transpose and addition", "[operations]" ) {
+	GPU_Operations gpu_op(1, 1, 1, 0, -1);
+
+	float a[] = { 1.0, 1.0, 2.0, 1.0, 0.0, 2.0, 0.0, 2.0, 0.0, 3.0, 3.0, 4.0, 5.0, 0.0, 3.0 };
+	float b[] = { 0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 0.0, -2.0, 0.0};
+	float e[] = { 6.0, 1.0, 21.0, 4.0, 4.0, 7.0, 5.0, 2.0, 2.0, 0.0, 2.0, 2.0 };
+
+
+	int m = 3;
+	int n = 4;
+	int k = 5;
+
+	float* a_d = gpu_op.to_device(a, m * k * sizeof(float));
+	float* b_d = gpu_op.to_device(a, n * k * sizeof(float));
+	float* c_d = gpu_op.malloc(m * n * sizeof(float));
+	gpu_op.fill(c_d, m, 2.0f);
+	gpu_op.fill(&c_d[m], (n - 1) * m, 4.0f);
+
+	gpu_op.gemm("t", "n", m, n, k, 1.0, a_d, k, b_d, k, 0.5, c_d, m);
+
+	float* c_h = (float*) std::malloc(m * n * sizeof(float));
+
+	gpu_op.to_host(c_d, c_h, m * n * sizeof(float));
+
+	for (unsigned i = 0; i < n * m; i++) {
+		CHECK(c_h[i] == e[i]);
+	}
+
+	std::free(c_h);
+	gpu_op.free(a_d);
+	gpu_op.free(b_d);
+}
+
 // the pointer-to-memberfunction thingy is pretty ugly :(
 template<class OP>
 float* test_scale(OP& op, void (OP::*scalefunc)(float*, unsigned int, unsigned int, float*) const, float* X, float* s,
