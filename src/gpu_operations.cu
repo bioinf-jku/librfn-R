@@ -300,7 +300,7 @@ GPU_Operations::~GPU_Operations() {
 		CUDA_CALL(cudaStreamSynchronize(streams[i]));
 		CUDA_CALL(cudaStreamDestroy(streams[i]));
 	}
-	CUSPARSE_CAL(cusparseDestroyMatDescr(descr));
+	CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
 }
 
 float* GPU_Operations::to_device(const float* src, size_t size) const {
@@ -482,15 +482,15 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 			const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
-			const float beta, float *c,	const int ldc) const {
+			const float beta, float *c,	const int ldc) {
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
 	sparseMatrix b_trans;
 
 	if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		b_trans.values = b->values;
-		b_trans.columns = (int*) malloc(b->nnz * sizeof(int));
-		b_trans.rowPointers = (int*) malloc((n + 1) * sizeof(int));
+		b_trans.columns = malloci(b->nnz * sizeof(int));
+		b_trans.rowPointers = malloci((n + 1) * sizeof(int));
 		b_trans.nnz = b->nnz;
 		b_trans.m = n;
 		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,

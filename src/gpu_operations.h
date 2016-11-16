@@ -22,8 +22,8 @@ inline cublasFillMode_t uplo_to_cublas(const char* uplo) {
 	return tolower(uplo[0]) == 'l' ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
 }
 
-inline cusparseFillMode_t op_to_cusparse(const char* op) {
-	return tolower(uplo[0]) == 't' ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE;
+inline cusparseOperation_t op_to_cusparse(const char* op) {
+	return tolower(op[0]) == 't' ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE;
 }
 
 static const char* cusparseErrorString(cusparseStatus_t error) {
@@ -226,7 +226,7 @@ public:
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 				const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
-				const float beta, float *c,	const int ldc) const;
+				const float beta, float *c,	const int ldc);
 
 	void dgmm(const char* mode, const int m, const int n, const float* A, int lda, const float* x, int incx, float* C,
 			int ldc) const {
@@ -317,14 +317,25 @@ public:
 		}
 	}
 
-	void* malloc(size_t size) const {
-		void* retval = 0;
+	float* malloc(size_t size) const {
+		float* retval = 0;
 		cudaError_t err = cudaMalloc(&retval, size);
 		CUDA_CALL(err);
 		if (err != cudaSuccess) {
 			fprintf(stderr, "cudaMalloc failed\n");
 			retval = 0;
 		}
+		return retval;
+	}
+
+	int* malloci(size_t size) const {
+		int* retval = 0;
+			cudaError_t err = cudaMalloc(&retval, size);
+			CUDA_CALL(err);
+			if (err != cudaSuccess) {
+				fprintf(stderr, "cudaMalloc failed\n");
+				retval = 0;
+			}
 		return retval;
 	}
 
@@ -385,9 +396,9 @@ public:
 		dest->nnz = (toIndex - fromIndex);
 		dest->m = nrows_to_copy;
 
-		dest->values = (float*) malloc(dest->nnz * sizeof(float));
-		dest->columns = (int*) malloc(dest->nnz * sizeof(int));
-		dest->rowPointers = (int*) malloc((nrows_to_copy + 1) * sizeof(int));
+		dest->values = malloc(dest->nnz * sizeof(float));
+		dest->columns = malloci(dest->nnz * sizeof(int));
+		dest->rowPointers = malloci((nrows_to_copy + 1) * sizeof(int));
 
 		memcpy(dest->values, &src->values[fromIndex], dest->nnz * sizeof(float));
 		memcpy(dest->columns, &src->columns[fromIndex], dest->nnz * sizeof(int));
@@ -435,7 +446,7 @@ public:
 		dest->m = nrows;
 		dest->values = &X->values[fromIndex];
 		dest->columns = &X->columns[fromIndex];
-		dest->rowPointers = (int*) malloc((nrows + 1) * sizeof(int));
+		dest->rowPointers = malloci((nrows + 1) * sizeof(int));
 		memcpy(dest->rowPointers, &X->rowPointers[from], (nrows + 1) * sizeof(int));
 		subtract_first_element(dest->rowPointers, nrows + 1);
 		return dest;
