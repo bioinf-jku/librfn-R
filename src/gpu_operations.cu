@@ -12,12 +12,6 @@
 
 static const int RNG_THREADS = 128;
 static const int RNG_BLOCKS = 128;
-/*
- cublasHandle_t GPU_Operations::handle;
- float* GPU_Operations::ones = 0;
- curandState* GPU_Operations::rng_state = 0;
- cudaStream_t* GPU_Operations::streams = 0;
- */
 
 // taken from PyCUDA
 void get_grid_sizes(int problemsize, int* blocks, int* threads) {
@@ -274,7 +268,7 @@ GPU_Operations::GPU_Operations(const int n, const int m, const int k, unsigned l
 	CUDA_CALL(cudaMalloc(&rng_state, RNG_BLOCKS * RNG_THREADS * sizeof(curandState)));
 	setup_rng<<<RNG_BLOCKS, RNG_THREADS>>>(rng_state, seed);
 	int ones_size = n > k ? n : k;
-	ones = malloc(ones_size * sizeof(float));
+	ones = (float*) malloc(ones_size * sizeof(float));
 	fill(ones, ones_size, 1.0f);
 	CUDA_CALL(cudaMalloc(&devinfo, sizeof(int)));
 
@@ -288,7 +282,10 @@ GPU_Operations::GPU_Operations(const int n, const int m, const int k, unsigned l
 	for (int i = 0; i < MAX_STREAMS; i++) {
 		CUDA_CALL(cudaStreamCreate(&streams[i]));
 	}
-	currentStream = -1;
+
+	CUSPARSE_CALL(cusparseCreateMatDescr(&descr));
+	CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
+	CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
 }
 
 GPU_Operations::~GPU_Operations() {
@@ -303,6 +300,7 @@ GPU_Operations::~GPU_Operations() {
 		CUDA_CALL(cudaStreamSynchronize(streams[i]));
 		CUDA_CALL(cudaStreamDestroy(streams[i]));
 	}
+	CUSPARSE_CAL(cusparseDestroyMatDescr(descr));
 }
 
 float* GPU_Operations::to_device(const float* src, size_t size) const {
@@ -322,20 +320,12 @@ int* GPU_Operations::to_device(const int* src, size_t size) const {
 sparseMatrix* GPU_Operations::to_device(const sparseMatrix* src, size_t size) const {
 	sparseMatrix* dst = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 
-	size_t size_values = src->nnz * sizeof(float);
-	size_t size_columns = src-> nnz * sizeof(int);
-	size_t size_rowPointers = (src->m + 1) * sizeof(int);
-
-	CUDA_CALL(cudaMalloc(&dst->values, size_values));
-	CUDA_CALL(cudaMalloc(&dst->columns, size_columns));
-	CUDA_CALL(cudaMalloc(&dst->rowPointers, size_rowPointers));
-
-	CUDA_CALL(cudaMemcpy(dst->values, src->values, size_values, cudaMemcpyHostToDevice));
-	CUDA_CALL(cudaMemcpy(dst->columns, src->columns, size_columns, cudaMemcpyHostToDevice));
-	CUDA_CALL(cudaMemcpy(dst->rowPointers, src->rowPointers, size_rowPointers, cudaMemcpyHostToDevice));
-
+	dst->values = to_device(src->values, src->nnz * sizeof(float));
+	dst->columns = to_device(src->columns, src-> nnz * sizeof(int));
+	dst->rowPointers = to_device(src->rowPointers, (src->m + 1) * sizeof(int));
 	dst->m = src->m;
 	dst->nnz = src->nnz;
+
 	return dst;
 }
 
@@ -434,6 +424,125 @@ void GPU_Operations::scale_rows(float* X, const unsigned nrows, const unsigned n
 	scale_rows_kernel<<<threads, blocks>>>(X, s, nrows, ncols);
 }
 
+void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
+	int threads, blocks;
+	get_grid_sizes(len, &threads, &blocks);
+	subtract_first_kernel<<<threads, blocks>>>(a, len);
+}
+
+void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols,
+		float* variance) const {
+	int threads, blocks;
+	get_grid_sizes(ncols, &threads, &blocks);
+	sparse_col_variance_kernel<<<threads, blocks>>>(*X, variance, nrows, ncols);
+}
+
+void GPU_Operations::scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
+
+	int threads, blocks;
+	get_grid_sizes(X->nnz, &threads, &blocks);
+	sparse_scale_columns_kernel<<<threads, blocks>>>(*X, s, nrows, ncols);
+}
+
+void GPU_Operations::scale_rows(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
+	int threads, blocks;
+	get_grid_sizes(X->m, &threads, &blocks);
+	sparse_scale_rows_kernel<<<threads, blocks>>>(*X, s);
+}
+
+void GPU_Operations::dropout(sparseMatrix* X, const unsigned size, const float dropout_rate) const {
+	dropout_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, dropout_rate, rng_state);
+	assert(!cudaGetLastError());
+}
+
+void GPU_Operations::add_gauss_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const {
+	gauss_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
+	assert(!cudaGetLastError());
+}
+
+void GPU_Operations::add_saltpepper_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const {
+	saltpepper_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
+	assert(!cudaGetLastError());
+}
+
+void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
+		const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
+		const int ldc) const {
+	cusparseOperation_t opA = op_to_cusparse(transa);
+	cusparseOperation_t opB = op_to_cusparse(transb);
+
+	int n_a = k;
+	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		n_a = m;
+	}
+
+	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, a->m, n, n_a,
+			a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
+}
+
+void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
+			const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
+			const float beta, float *c,	const int ldc) const {
+	cusparseOperation_t opA = op_to_cusparse(transa);
+	cusparseOperation_t opB = op_to_cusparse(transb);
+	sparseMatrix b_trans;
+
+	if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		b_trans.values = b->values;
+		b_trans.columns = (int*) malloc(b->nnz * sizeof(int));
+		b_trans.rowPointers = (int*) malloc((n + 1) * sizeof(int));
+		b_trans.nnz = b->nnz;
+		b_trans.m = n;
+		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
+				CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
+	} else {
+		b_trans = *b;
+	}
+
+	int m_a = m; // number of rows of A
+	int n_a = k; // number of columns of A
+	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		m_a = k;
+		n_a = m;
+	}
+
+	int bufsize;
+	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, &bufsize));
+	void* buffer = get_buffer(bufsize);
+
+	int* row_pointers = (int*) std::malloc((b_trans.m + 1) * sizeof(int));
+	copy_to_host(b_trans.rowPointers, row_pointers, (b_trans.m + 1) * sizeof(int));
+
+	for(unsigned r = 0; r < b_trans.m; ++r) {
+
+		int row_pointer = row_pointers[r];
+		int nnz = row_pointers[r + 1] - row_pointer;
+
+		set_stream(r);
+
+		if (nnz == 0) {
+			CUBLAS_CALL(cublasSscal_v2(handle, n, &beta, &c[r * ldc], 1));
+		} else if (nnz > 0) {
+			CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, nnz,
+					&b_trans.values[row_pointer], &b_trans.columns[row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+		} else {
+			printf("Internal error");
+			exit(1);
+		}
+	}
+
+	synchronize_all_streams();
+	default_stream();
+
+	if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		free(b_trans.columns);
+		free(b_trans.rowPointers);
+	}
+	std::free(row_pointers);
+
+}
+
+// Debugging
 void GPU_Operations::printMatrixRM(const float* a, int n, int m, const char* fmt) const {
 	const char* format = fmt == 0 ? "%1.3f " : fmt;
 	size_t size = n * m * sizeof(float);
@@ -531,125 +640,3 @@ void GPU_Operations::printMatrixSPM(const sparseMatrix *a, int n, int m, const c
 	std::free(tmp_cols);
 	std::free(tmp_pointers);
 }
-
-void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
-	int threads, blocks;
-	get_grid_sizes(len, &threads, &blocks);
-	subtract_first_kernel<<<threads, blocks>>>(a, len);
-}
-
-void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols,
-		float* variance) const {
-	int threads, blocks;
-	get_grid_sizes(ncols, &threads, &blocks);
-	sparse_col_variance_kernel<<<threads, blocks>>>(*X, variance, nrows, ncols);
-}
-
-void GPU_Operations::scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
-
-	int threads, blocks;
-	get_grid_sizes(X->nnz, &threads, &blocks);
-	sparse_scale_columns_kernel<<<threads, blocks>>>(*X, s, nrows, ncols);
-}
-
-void GPU_Operations::scale_rows(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
-	int threads, blocks;
-	get_grid_sizes(X->m, &threads, &blocks);
-	sparse_scale_rows_kernel<<<threads, blocks>>>(*X, s);
-}
-
-void GPU_Operations::dropout(sparseMatrix* X, const unsigned size, const float dropout_rate) const {
-	dropout_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, dropout_rate, rng_state);
-	assert(!cudaGetLastError());
-}
-
-void GPU_Operations::add_gauss_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const {
-	gauss_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
-	assert(!cudaGetLastError());
-}
-
-void GPU_Operations::add_saltpepper_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const {
-	saltpepper_noise_eltw<<<RNG_BLOCKS, RNG_THREADS>>>(X->values, size, noise_rate, rng_state);
-	assert(!cudaGetLastError());
-}
-
-#define char_trans_to_cusparse(tr) (tr[0] == 'T' || tr[0] == 't' ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE)
-
-void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
-		const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
-		const int ldc) const {
-	cusparseMatDescr_t descr;
-	CUSPARSE_CALL(cusparseCreateMatDescr(&descr));
-	CUSPARSE_CALL(cusparseSetMatType(descr, CUSPARSE_MATRIX_TYPE_GENERAL));
-	CUSPARSE_CALL(cusparseSetMatIndexBase(descr, CUSPARSE_INDEX_BASE_ZERO));
-
-	cusparseOperation_t opA = char_trans_to_cusparse(transa);
-	cusparseOperation_t opB = char_trans_to_cusparse(transb);
-	unsigned n_a = k;
-	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		n_a = m;
-	}
-
-	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, a->m, n, n_a,
-			a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
-
-	CUSPARSE_CALL(cusparseDestroyMatDescr(descr));
-}
-
-void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
-			const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
-			const float beta, float *c,	const int ldc) {
-	cusparseOperation_t opA = char_trans_to_cusparse(transa);
-	cusparseOperation_t opB = char_trans_to_cusparse(transb);
-	sparseMatrix b_trans;
-
-	if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		b_trans.values = b->values;
-		b_trans.columns = malloc_t<int>(b->nnz * sizeof(int));
-		b_trans.rowPointers = malloc_t<int>((n + 1)* sizeof(int));
-		b_trans.nnz = b->nnz;
-		b_trans.m = n;
-		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
-				CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
-	} else {
-		b_trans = *b;
-	}
-	int m_a = m; // number of rows of A
-	int n_a = k; // number of columns of A
-	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		m_a = k;
-		n_a = m;
-	}
-
-	int bufsize;
-	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, &bufsize));
-	void* buffer = get_buffer(bufsize);
-
-	int* row_pointers = (int*)std::malloc((b_trans.m + 1) * sizeof(int));
-	copy_to_host(b_trans.rowPointers, row_pointers, (b_trans.m + 1) * sizeof(int));
-
-	for(unsigned r = 0; r < b_trans.m; ++r) {
-
-		int row_pointer = row_pointers[r];
-		int nnz = row_pointers[r + 1] - row_pointer;
-
-		if (nnz == 0) {
-			CUBLAS_CALL(cublasSscal_v2(handle, n, &beta, &c[r * ldc], 1));
-		} else if (nnz > 0) {
-			next_stream();
-			CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, nnz,
-					&b_trans.values[row_pointer], &b_trans.columns[row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
-		} else {
-			printf("Internal error");
-			exit(1);
-		}
-	}
-	synchronize_all_streams();
-	default_stream();
-
-	free(b_trans.columns);
-	free(b_trans.rowPointers);
-	std::free(row_pointers);
-
-}
-#undef char_trans_to_cusparse

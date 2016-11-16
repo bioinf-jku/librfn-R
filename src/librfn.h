@@ -157,4 +157,4 @@ void calculate_W_gpu_sparse(const sparseMatrix* X, const float* W, const float* 
 }
 #endif
 
-#endif
+#endif /* LIBRFN_H */

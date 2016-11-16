@@ -1,41 +1,23 @@
+#include "librfn.h"
 #include <stdlib.h>
+#include <sys/time.h>
+#include "cpu_operations.h"
 
 #ifndef COMPILE_FOR_R
 #include <stdio.h>
 #include <assert.h>
-#endif
+#else
+#include "use_R_impl.h"
+#endif /* COMPILE_FOR_R */
 
-#include <sys/time.h>
-
-#include "librfn.h"
-#include "cpu_operations.h"
 #ifndef NOGPU
 #include "gpu_operations.h"
-#endif
-
-#ifdef COMPILE_FOR_R
-#include "use_R_impl.h"
-#endif
+#endif /* NOGPU */
 
 float time_diff(struct timeval *t2, struct timeval *t1) {
     long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
     return diff / 1000000.0f;
 }
-
-/*
-// used for debugging
-template<class OP>
-static void print_abs_sum(float* dx, size_t size) {
-    float *hx = (float*) std::malloc(size*sizeof(float));
-    op.copy_to_host(dx, hx, size*sizeof(float));
-    float sum = 0.0;
-    for (unsigned i = 0; i < size; ++i)
-        sum += fabsf(hx[i]);
-    free(hx);
-    printf("%5.2f ", sum);
-    fflush(stdout);
-}
-*/
 
 template <class OP>
 int calculate_W_impl_invertMxM(OP& op, const float* W, const float* P, float* Wout,
@@ -358,14 +340,8 @@ void calculate_W(XTypeConst X_host, const float* W_host, const float* P_host,
         op.free(WPWchol);
         op.invert(P, m);
     }
-    
-    /*printf("\nWout:\n");
-    op.printMatrixRM(Wout, m, k, NULL);
-    printf("\nX:\n");
-    op.printMatrixRM(X, n, m, NULL);*/
+
     op.gemm("t", "n", k, n, m, 1.0f, Wout, m, X, m, 0.0f, H, k);
-    /*printf("\nH:\n");
-    op.printMatrixRM(H, n, k, NULL);*/
 
     switch (activation_type) {
         case 1: op.maximum(H, h_threshold, n*k); break;

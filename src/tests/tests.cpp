@@ -470,15 +470,6 @@ TEST_CASE( "gemm dense GPU 2nd variant transpose and addition", "[operations]" )
 	gpu_op.fill(c_d, m, 2.0f);
 	gpu_op.fill(&c_d[m], (n - 1) * m, 4.0f);
 
-	printf("A\n");
-	gpu_op.printMatrixCM(a_d, k, m, 0);
-
-	printf("B\n");
-	gpu_op.printMatrixCM(b_d, k, n, 0);
-
-	printf("C\n");
-	gpu_op.printMatrixCM(c_d, m, n, 0);
-
 	gpu_op.gemm("t", "n", m, n, k, 1.0, a_d, k, b_d, k, 0.5, c_d, m);
 
 	float* c_h = (float*) std::malloc(m * n * sizeof(float));

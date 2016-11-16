@@ -22,6 +22,10 @@ inline cublasFillMode_t uplo_to_cublas(const char* uplo) {
 	return tolower(uplo[0]) == 'l' ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
 }
 
+inline cusparseFillMode_t op_to_cusparse(const char* op) {
+	return tolower(uplo[0]) == 't' ? CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE;
+}
+
 static const char* cusparseErrorString(cusparseStatus_t error) {
 	switch (error) {
 	case CUSPARSE_STATUS_SUCCESS:
@@ -144,7 +148,7 @@ inline void cusolverAssert(cusolverStatus_t code, const char *file, int line) {
 #define CUSPARSE_CALL(ans) (ans)
 #endif
 
-#define MAX_STREAMS 16 // documentation says 16, SO 32, 128 should be more than enough
+#define MAX_STREAMS 16
 
 
 class GPU_Operations {
@@ -155,8 +159,7 @@ class GPU_Operations {
 	std::map<size_t, void*> buffer_map; // keeps track of buffers allocated for potrf
 	int* devinfo; // cuSOLVER error reporting
 	cudaStream_t streams[MAX_STREAMS];
-
-	int currentStream;
+	cusparseMatDescr_t descr;
 public:
 
 	float* ones;
@@ -171,28 +174,6 @@ public:
 		CUDA_CALL(cudaMemcpy(dst, src, size, cudaMemcpyDeviceToHost));
 		free(src);
 		return dst;
-	}
-
-	void next_stream() {
-		currentStream += 1;
-		if (currentStream == MAX_STREAMS) {
-			currentStream = 0;
-		}
-		//CUBLAS_CALL(cublasSetStream_v2(handle, streams[currentStream]));
-	}
-
-	void synchronize_stream() const {
-		//CUDA_CALL(cudaStreamSynchronize(streams[currentStream]));
-	}
-
-	void synchronize_all_streams() const {
-		//for (unsigned i = 0; i < MAX_STREAMS; ++i) {
-		//	CUDA_CALL(cudaStreamSynchronize(streams[i]));
-		//}
-	}
-
-	void default_stream() const {
-		//CUBLAS_CALL(cublasSetStream_v2(handle, NULL));
 	}
 
 	int* to_host(int* src, int* dst, size_t size) const {
@@ -211,6 +192,26 @@ public:
 		return dst;
 	}
 
+	void set_stream(unsigned iterator) const {
+		unsigned stream_id = iterator % MAX_STREAMS;
+		CUBLAS_CALL(cublasSetStream_v2(handle, streams[stream_id]));
+	}
+
+	void synchronize_stream(unsigned iterator) const {
+		unsigned stream_id = iterator % MAX_STREAMS;
+		CUDA_CALL(cudaStreamSynchronize(streams[stream_id]));
+	}
+
+	void synchronize_all_streams() const {
+		for (unsigned i = 0; i < MAX_STREAMS; ++i) {
+			synchronize_stream(i);
+		}
+	}
+
+	void default_stream() const {
+		CUBLAS_CALL(cublasSetStream_v2(handle, NULL));
+	}
+
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
 			const float *a, const int lda, const float *b, const int ldb, const float beta, float *c,
 			const int ldc) const {
@@ -225,7 +226,7 @@ public:
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 				const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
-				const float beta, float *c,	const int ldc);
+				const float beta, float *c,	const int ldc) const;
 
 	void dgmm(const char* mode, const int m, const int n, const float* A, int lda, const float* x, int incx, float* C,
 			int ldc) const {
@@ -296,17 +297,19 @@ public:
 	}
 
 	void free(void* ptr) const {
-		if (ptr != 0 && ptr != &INVALID)
+		if (ptr != 0) {
 			CUDA_CALL(cudaFree(ptr));
+		}
 	}
 
 	void free_devicememory(void* ptr) const {
-		if (ptr != 0)
+		if (ptr != 0) {
 			CUDA_CALL(cudaFree(ptr));
+		}
 	}
 
 	void free_devicememory(sparseMatrix* matrix) {
-		if (matrix != 0) {
+		if (matrix != 0 && matrix != &INVALID) {
 			free(matrix->columns);
 			free(matrix->values);
 			free(matrix->rowPointers);
@@ -314,19 +317,8 @@ public:
 		}
 	}
 
-	float* malloc(size_t size) const {
-		float* retval = 0;
-		cudaError_t err = cudaMalloc(&retval, size);
-		CUDA_CALL(err);
-		if (err != cudaSuccess) {
-			fprintf(stderr, "cudaMalloc failed\n");
-			retval = 0;
-		}
-		return retval;
-	}
-
-	template<typename T> T* malloc_t(size_t size) const {
-		T* retval = 0;
+	void* malloc(size_t size) const {
+		void* retval = 0;
 		cudaError_t err = cudaMalloc(&retval, size);
 		CUDA_CALL(err);
 		if (err != cudaSuccess) {
@@ -361,17 +353,6 @@ public:
 	void add_saltpepper_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const;
 	void add_gauss_noise(sparseMatrix* X, const unsigned size, const float noise_rate) const;
 
-// Useful for debugging
-	void printMatrixCM(const float* a, int n, int m, const char* fmt) const;
-	void printMatrixRM(const float* a, int n, int m, const char* fmt) const;
-
-	void printMatrixSP(const sparseMatrix* a, const char* fmt) const;
-	void printMatrixRM(const sparseMatrix* a, int n, int m, const char* fmt) const {
-		printMatrixSPM(a, n, m, fmt);
-	}
-
-	void printMatrixSPM(const sparseMatrix* a, int n, int m, const char* fmt) const;
-
 	template<typename T>
 	T init_invalid(void) {
 		return (typeid(T) == typeid(sparseMatrix*) ? (T) &INVALID : (T) 0);
@@ -387,8 +368,8 @@ public:
 		return matrix;
 	}
 
-	float *malloc_matrix(int rows, int cols, float *dummy) {
-		return malloc(rows * cols * sizeof(float));
+	float* malloc_matrix(int rows, int cols, float *dummy) {
+		return (float*) malloc(rows * cols * sizeof(float));
 	}
 
 	float *memcpy_matrix(float *dest, float *src, int nrows_to_copy, int src_ncol, int first_row = 0) const {
@@ -398,43 +379,23 @@ public:
 	sparseMatrix* memcpy_matrix(sparseMatrix* dest, sparseMatrix* src, int nrows_to_copy, int src_ncol, int first_row = 0) const {
 		int fromIndex = 0;
 		int toIndex   = 0;
-		CUDA_CALL(cudaMemcpy(&fromIndex, &src->rowPointers[first_row],                 sizeof(int), cudaMemcpyDeviceToHost));
+		CUDA_CALL(cudaMemcpy(&fromIndex, &src->rowPointers[first_row], sizeof(int), cudaMemcpyDeviceToHost));
 		CUDA_CALL(cudaMemcpy(&toIndex  , &src->rowPointers[first_row + nrows_to_copy], sizeof(int), cudaMemcpyDeviceToHost));
 
 		dest->nnz = (toIndex - fromIndex);
 		dest->m = nrows_to_copy;
 
-		dest->values      = malloc(dest->nnz * sizeof(float));
-		dest->columns     = malloc_t<int>(dest->nnz * sizeof(int));
-		dest->rowPointers = malloc_t<int>((nrows_to_copy + 1) * sizeof(int));
+		dest->values = (float*) malloc(dest->nnz * sizeof(float));
+		dest->columns = (int*) malloc(dest->nnz * sizeof(int));
+		dest->rowPointers = (int*) malloc((nrows_to_copy + 1) * sizeof(int));
 
-		memcpy(dest->values     , src->values      + fromIndex, dest->nnz * sizeof(float));
-		memcpy(dest->columns    , src->columns     + fromIndex, dest->nnz * sizeof(int));
-		memcpy(dest->rowPointers, src->rowPointers + first_row, (nrows_to_copy + 1) * sizeof(int));
+		memcpy(dest->values, &src->values[fromIndex], dest->nnz * sizeof(float));
+		memcpy(dest->columns, &src->columns[fromIndex], dest->nnz * sizeof(int));
+		memcpy(dest->rowPointers, &src->rowPointers[first_row], (nrows_to_copy + 1) * sizeof(int));
 		subtract_first_element(dest->rowPointers, nrows_to_copy + 1);
 
 		return dest;
 	}
-
-	void prints(const float* f, unsigned l) const {
-			float* src = (float*) std::malloc(l * sizeof(float));
-			copy_to_host(f, src, l * sizeof(float));
-			for (unsigned i = 0; i < l; ++i) {
-				printf("%f ", src[i]);
-			}
-			printf("\n");
-			std::free(src);
-		}
-
-	void printsu(const int* f, unsigned l) const {
-		int* src = (int*) std::malloc(l * sizeof(int));
-			copy_to_host(f, src, l * sizeof(int));
-			for (unsigned i = 0; i < l; ++i) {
-				printf("%d ", src[i]);
-			}
-			printf("\n");
-			std::free(src);
-		}
 
 	void subtract_first_element(int* a, unsigned len) const;
 
@@ -445,6 +406,7 @@ public:
 		// see get batch
 		if (handle_valid(a)) {
 			free(a->rowPointers);
+			std::free(a);
 		}
 	}
 
@@ -462,22 +424,24 @@ public:
 		// batch_size number of rows
 		int from = batch_num * batch_size;
 		int nrows = batch_size;
+
 		sparseMatrix* dest = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 		int fromIndex = 0;
 		int toIndex   = 0;
-		CUDA_CALL(cudaMemcpy(&fromIndex, &X->rowPointers[from],                 sizeof(int), cudaMemcpyDeviceToHost));
+		CUDA_CALL(cudaMemcpy(&fromIndex, &X->rowPointers[from], sizeof(int), cudaMemcpyDeviceToHost));
 		CUDA_CALL(cudaMemcpy(&toIndex  , &X->rowPointers[from + nrows], sizeof(int), cudaMemcpyDeviceToHost));
 
 		dest->nnz = (toIndex - fromIndex);
 		dest->m = nrows;
 		dest->values = &X->values[fromIndex];
 		dest->columns = &X->columns[fromIndex];
-		dest->rowPointers = (int*)malloc((nrows + 1) * sizeof(int));
+		dest->rowPointers = (int*) malloc((nrows + 1) * sizeof(int));
 		memcpy(dest->rowPointers, &X->rowPointers[from], (nrows + 1) * sizeof(int));
 		subtract_first_element(dest->rowPointers, nrows + 1);
 		return dest;
 	}
 
+	// Useful for debugging
 	void printm(const char* name, const sparseMatrix *a, int n, int m) const {
 		printf("%s (sparse)\n", name);
 		printMatrixSPM(a, n, m, 0);
@@ -486,5 +450,35 @@ public:
 	void printm(const char* name, const float* a, int n, int m) const {
 		printf("%s\n", name);
 		printMatrixCM(a, n, m, 0);
+	}
+
+	void printMatrixCM(const float* a, int n, int m, const char* fmt) const;
+	void printMatrixRM(const float* a, int n, int m, const char* fmt) const;
+
+	void printMatrixSP(const sparseMatrix* a, const char* fmt) const;
+	void printMatrixRM(const sparseMatrix* a, int n, int m, const char* fmt) const {
+		printMatrixSPM(a, n, m, fmt);
+	}
+
+	void printMatrixSPM(const sparseMatrix* a, int n, int m, const char* fmt) const;
+
+	void prints(const float* f, unsigned l) const {
+		float* src = (float*) std::malloc(l * sizeof(float));
+		copy_to_host(f, src, l * sizeof(float));
+		for (unsigned i = 0; i < l; ++i) {
+			printf("%f ", src[i]);
+		}
+		printf("\n");
+		std::free(src);
+	}
+
+	void printsu(const int* f, unsigned l) const {
+		int* src = (int*) std::malloc(l * sizeof(int));
+		copy_to_host(f, src, l * sizeof(int));
+		for (unsigned i = 0; i < l; ++i) {
+			printf("%d ", src[i]);
+		}
+		printf("\n");
+		std::free(src);
 	}
 };
