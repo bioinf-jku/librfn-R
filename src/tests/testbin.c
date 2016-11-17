@@ -35,6 +35,42 @@ float* sparse_to_dense(sparseMatrix* sparse, int n, int m) {
 	return dense;
 }
 
+sparseMatrix* dense_to_sparse(float* dense, int n, int m) {
+	int nnz = 0;
+	int* rowPointers = (int*) malloc((n + 1) * sizeof(int));
+	rowPointers[0] = 0;
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < m; j++) {
+			if (dense[i+j*n] != 0) {
+				nnz++;
+
+			}
+		}
+		rowPointers[i + 1] = nnz;
+	}
+
+	float* values = (float*) malloc(nnz * sizeof(float));
+	int* columns = (int*) malloc(nnz * sizeof(int));
+	int ind = 0;
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < m; j++) {
+			if (dense[i+j*n] != 0) {
+				values[ind] = dense[i+j*n];
+				columns[ind] = j;
+				ind++;
+			}
+		}
+	}
+
+	sparseMatrix* sparse = (sparseMatrix*) malloc(sizeof(sparseMatrix));
+	sparse->values = values;
+	sparse->columns = columns;
+	sparse->rowPointers = rowPointers;
+	sparse->m = n;
+	sparse->nnz = nnz;
+	return sparse;
+}
+
 /*
 // generates random samples from a 0/1 Gaussian via Box-Mueller
 static double rand_normal(void) {
@@ -72,9 +108,9 @@ void printi(int* x, int n) {
 int main(int argc, char** argv) {
 	srand(123);
 
-    int n = 4;
-    int m = 2;
-    int k = 3;
+    int n = 10;
+    int m = 6;
+    int k = 4;
     int n_iter = 10;
     int gpu_id = -1;
     int sparse = 0;
@@ -91,43 +127,23 @@ int main(int argc, char** argv) {
     if (argc > 4)
         gpu_id = atoi(argv[4]);
 
-    int nnz = 4;
-    float* X = (float*) malloc(nnz * sizeof(float));
-    for (int i = 0; i < nnz; ++i) {
+    int dropout = 0.6;
+    float* X = (float*) malloc(n*m * sizeof(float));
+    for (int i = 0; i < n*m; ++i) {
     	X[i] = 5.0f * rand_unif() - 0.5f;
+    	if (rand_unif() < dropout) {
+    		X[i] = 0;
+    	}
     }
 
-    int* rowPointer = (int*) malloc((n + 1) * sizeof(int));
-    rowPointer[0] = 0;
-    rowPointer[n] = nnz;
-    for (int i = 1; i < n; ++i) {
-    	rowPointer[i] = rand_max(nnz);
-    }
-    qsort(rowPointer, n + 1, sizeof(int), cmpfunc);
-
-    int* col = (int*) malloc(nnz * sizeof(int));
-    for (int i = 0; i < nnz; ++i) {
-       col[i] = rand_max(m);
-    }
-    for (int i = 0; i < n; i++) {
-    	qsort(&col[rowPointer[i]], rowPointer[i + 1] - rowPointer[i], sizeof(int), cmpfunc);
-    }
-
-    sparseMatrix sp;
-    sp.values = X;
-    sp.columns = col;
-    sp.rowPointers = rowPointer;
-    sp.m = n;
-    sp.nnz = nnz;
-
-    float* de = sparse_to_dense(&sp, n, m);
+    sparseMatrix* sp = dense_to_sparse(X, n, m);
 
     printf("Matrix\n");
-    printMat(de, n, m);
+    printMat(X, n, m);
     printf("Sparse\n");
-    printfl(sp.values, sp.nnz);
-    printi(sp.rowPointers, sp.m + 1);
-    printi(sp.columns, sp.nnz);
+    printfl(sp->values, sp.nnz);
+    printi(sp->rowPointers, sp.m + 1);
+    printi(sp->columns, sp.nnz);
 
 
     float* W1 = (float*) malloc(m*k*sizeof(float));
@@ -152,7 +168,7 @@ int main(int argc, char** argv) {
 
     if (sparse == 0 || sparse > 1) {
     	gettimeofday(&t0, 0);
-    	int retval = train_gpu(de, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	int retval = train_gpu(X, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
     	printf("time for gpu rfn(%d): %3.4fs\n", retval, time_diff(&t1, &t0));
 
@@ -161,7 +177,7 @@ int main(int argc, char** argv) {
     }
     if (sparse == 1 || sparse > 1) {
     	gettimeofday(&t0, 0);
-    	int retval = train_gpu_sparse(&sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	int retval = train_gpu_sparse(sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
     	printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
 
@@ -169,9 +185,10 @@ int main(int argc, char** argv) {
     	printMat(W2, m, k);
     }
     free(X);
-    free(col);
-    free(rowPointer);
-    free(de);
+    free(sp->columns);
+    free(sp->rowPointers);
+    free(sp->values);
+    free(sp);
     free(W1);
     free(P1);
     free(W2);
