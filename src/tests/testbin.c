@@ -62,7 +62,7 @@ void printfl(float*x, int n) {
 }
 
 void printi(int* x, int n) {
-	const char* format = fmt == 0 ? "%1.3f " : fmt;
+	const char* format = "%1.3f ";
 	for (int i = 0; i < n; ++i) {
 		printf(format, x[i]);
 	}
