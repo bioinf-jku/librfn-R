@@ -360,8 +360,8 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 	float Wout_h[] = { 4.531, 2.989, -1.151, 1.372, 3.980, -0.647, -0.621, -0.054, 5.517, -0.275, -0.042, 1.730};
 	//float e[] = { 5.0, 0.0, 20.0, 2.0, 2.0, 5.0, 3.0, 0.0, 0.0, -2.0, 0.0, 0.0 };
 
-	int m = 6;
-	int k = 4;
+	int m = 4;
+	int k = 3;
 	int batch_size = 6;
 
 	sparseMatrix* Xnoise = create_sparse_matrix_d(gpu_op, x, c, p, k, nnz);
