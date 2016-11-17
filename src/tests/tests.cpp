@@ -355,17 +355,16 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 	int c[] = {0, 1, 2, 2, 1, 2, 3, 0, 3};
 	int p[] = {0, 3, 4, 5, 7, 8, 9};
 	int nnz = 9;
-	//int m = 6;
 
 	float Wout_h[] = { 4.531, 2.989, -1.151, 1.372, 3.980, -0.647, -0.621, -0.054, 5.517, -0.275, -0.042, 1.730};
 	//float e[] = { 5.0, 0.0, 20.0, 2.0, 2.0, 5.0, 3.0, 0.0, 0.0, -2.0, 0.0, 0.0 };
 
-	int m = 4;
 	int k = 3;
 	int batch_size = 6;
+	int m = 4;
 
-	sparseMatrix* Xnoise = create_sparse_matrix_d(gpu_op, x, c, p, k, nnz);
-	float* Wout = gpu_op.to_device(Wout_h, m * k * sizeof(float));
+	sparseMatrix* Xnoise = create_sparse_matrix_d(gpu_op, x, c, p, batch_size, nnz);
+	float* Wout = gpu_op.to_device(Wout_h, k * m * sizeof(float));
 	float* H = gpu_op.malloc(k * batch_size * sizeof(float));
 
 	gpu_op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
