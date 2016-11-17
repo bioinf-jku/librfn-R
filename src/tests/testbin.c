@@ -57,7 +57,7 @@ void printMat(float* x, int n, int m, char fmt = 0) {
 	printf("\n");
 }
 
-void printf(float*x, int n) {
+void printfl(float*x, int n) {
 	printMat(x, 1, n);
 }
 
@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
     printf("Matrix\n");
     printMat(de, n, m);
     printf("Sparse\n");
-    printf(sp.values);
+    printfl(sp.values);
     printi(sp.rowPointers);
     printi(sp.columns);
 
