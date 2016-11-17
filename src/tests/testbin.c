@@ -125,9 +125,9 @@ int main(int argc, char** argv) {
     printf("Matrix\n");
     printMat(de, n, m);
     printf("Sparse\n");
-    printfl(sp.values);
-    printi(sp.rowPointers);
-    printi(sp.columns);
+    printfl(sp.values, sp.nnz);
+    printi(sp.rowPointers, sp.m + 1);
+    printi(sp.columns, sp.nnz);
 
 
     float* W1 = (float*) malloc(m*k*sizeof(float));
