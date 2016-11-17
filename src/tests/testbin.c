@@ -47,8 +47,8 @@ float time_diff(struct timeval *t2, struct timeval *t1) {
     return diff / 1000000.0f;
 }
 
-void printMat(float* x, int n, int m, char fmt = 0) {
-	const char* format = fmt == 0 ? "%1.3f " : fmt;
+void printMat(float* x, int n, int m) {
+	const char* format = "%1.3f ";
 	for (int i = 0; i < n; ++i) {
 		for (int j = 0; j < m; ++j)
 			printf(format, x[i + j * n]);
