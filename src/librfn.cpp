@@ -200,7 +200,6 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             printf("gemm\n");
             printf("n %d, m %d, k %d, lda %d, ldb %d\n", k, batch_size, m, m, m);
             op.printm("Wout", Wout, m, k);
-            op.printm("H before", H, k, batch_size);
 
             // REMOVE FILL
             op.fill(H, k * batch_size, 0);
