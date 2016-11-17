@@ -197,6 +197,10 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
 
             op.printm("H before", H, k, batch_size);
 
+            // According to the gemm function call below:
+            // dim(Xnoise) = m * batch_size
+            // but we know that dim(Xnoise) = batch_size * m
+            // is this a bug or some funky indexing magic?
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
 
             op.printm("H", H, k, batch_size);
