@@ -196,9 +196,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             op.printm("Xnoise", Xnoise, batch_size, m);
 
             // REMOVE FILL
-            op.fill(H, k * batch_size, 0);
             op.printm("H before", H, k, batch_size);
-
 
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
 

@@ -25,8 +25,8 @@ int cmpfunc (const void * a, const void * b){
 }
 
 float* sparse_to_dense(sparseMatrix* sparse, int n, int m) {
-	float* dense = (float*) malloc(n*m*sizeof(float));
-	memset(dense, 0, n*m*sizeof(float));
+	float* dense = (float*) malloc(n * m * sizeof(float));
+	memset(dense, 0, n * m * sizeof(float));
 	for (unsigned i = 0; i < sparse->m; i++) {
 		for (unsigned j = sparse->rowPointers[i]; j < sparse->rowPointers[i + 1]; j++) {
 			dense[i + sparse->columns[j]*n] = sparse->values[j];
@@ -81,9 +81,9 @@ int main(int argc, char** argv) {
         gpu_id = atoi(argv[4]);
 
     int nnz = 4;
-    float* X = (float*) malloc(nnz*sizeof(float));
+    float* X = (float*) malloc(nnz * sizeof(float));
     for (int i = 0; i < nnz; ++i) {
-    	X[i] = 5.0f* rand_unif() - 0.5;
+    	X[i] = 5.0f * rand_unif() - 0.5f;
     }
 
     int* rowPointer = (int*) malloc((n + 1) * sizeof(int));
@@ -94,12 +94,12 @@ int main(int argc, char** argv) {
     }
     qsort(rowPointer, n + 1, sizeof(int), cmpfunc);
 
-    int* col = (int*) malloc(nnz*sizeof(int));
+    int* col = (int*) malloc(nnz * sizeof(int));
     for (int i = 0; i < nnz; ++i) {
        col[i] = rand_max(m);
     }
     for (int i = 0; i < n; i++) {
-    	qsort(&col[rowPointer[i]], rowPointer[i+1] - rowPointer[i], sizeof(int), cmpfunc);
+    	qsort(&col[rowPointer[i]], rowPointer[i + 1] - rowPointer[i], sizeof(int), cmpfunc);
     }
 
     sparseMatrix sp;
@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
     }
     if (sparse == 1 || sparse > 1) {
     	gettimeofday(&t0, 0);
-    	train_gpu_sparse(&sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	int retval = train_gpu_sparse(&sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
     	printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
 
