@@ -61,9 +61,9 @@ void printMat(float* x, int n, int m) {
 int main(int argc, char** argv) {
 	srand(123);
 
-    int n = 10;
-    int m = 4;
-    int k = 6;
+    int n = 4;
+    int m = 2;
+    int k = 3;
     int n_iter = 10;
     int gpu_id = -1;
     int sparse = 0;
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
     if (argc > 4)
         gpu_id = atoi(argv[4]);
 
-    int nnz = 10;
+    int nnz = 4;
     float* X = (float*) malloc(nnz*sizeof(float));
     for (int i = 0; i < nnz; ++i) {
     	X[i] = 5.0f* rand_unif() - 0.5;
