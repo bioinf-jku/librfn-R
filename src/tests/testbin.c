@@ -47,15 +47,26 @@ float time_diff(struct timeval *t2, struct timeval *t1) {
     return diff / 1000000.0f;
 }
 
-void printMat(float* x, int n, int m) {
-	char fmt = 0;
+void printMat(float* x, int n, int m, char fmt = 0) {
 	const char* format = fmt == 0 ? "%1.3f " : fmt;
-		for (int i = 0; i < n; ++i) {
-			for (int j = 0; j < m; ++j)
-				printf(format, x[i + j * n]);
-			printf("\n");
-		}
+	for (int i = 0; i < n; ++i) {
+		for (int j = 0; j < m; ++j)
+			printf(format, x[i + j * n]);
 		printf("\n");
+	}
+	printf("\n");
+}
+
+void printf(float*x, int n) {
+	printMat(x, 1, n);
+}
+
+void printi(int* x, int n) {
+	const char* format = fmt == 0 ? "%1.3f " : fmt;
+	for (int i = 0; i < n; ++i) {
+		printf(format, x[i]);
+	}
+	printf("\n");
 }
 
 int main(int argc, char** argv) {
@@ -110,6 +121,14 @@ int main(int argc, char** argv) {
     sp.nnz = nnz;
 
     float* de = sparse_to_dense(&sp, n, m);
+
+    printf("Matrix\n");
+    printMat(de, n, m);
+    printf("Sparse\n");
+    printf(sp.values);
+    printi(sp.rowPointers);
+    printi(sp.columns);
+
 
     float* W1 = (float*) malloc(m*k*sizeof(float));
     float* P1 = (float*) malloc(m*sizeof(float));
