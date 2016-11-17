@@ -368,7 +368,7 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 	float* Wout = gpu_op.to_device(Wout_h, m * k * sizeof(float));
 	float* H = gpu_op.malloc(k * batch_size * sizeof(float));
 
-    op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
+	gpu_op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
 
 	//float* c_h = (float*) std::malloc(m * n * sizeof(float));
 
@@ -379,7 +379,7 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 	}*/
 
     printf("buggy H\n");
-	op.printMatrixCM(H, k, batch_size, 0);
+    gpu_op.printMatrixCM(H, k, batch_size, 0);
 
 	//std::free(c_h);
 	gpu_op.free(Wout);
