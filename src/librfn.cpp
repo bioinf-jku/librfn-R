@@ -185,25 +185,20 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                         assert(false);
                 }
                 Xnoise = Xtmp;
-            }
-            else
-            {
-               /* in case of sparse X, this is a copy operation! */
-               printf("X\n m %d, cur_b %d, b_size %d\n", m, cur_batch, batch_size);
-               op.printm("X", X, n, m);
+            } else {
+            	/* in case of sparse X, this is a copy operation! */
             	Xnoise = op.get_batch(X, m, cur_batch, batch_size);
-            	printf("Batch\n");
-            	op.printm("Xnoise", Xnoise, batch_size, m);
-
             }
             
             printf("gemm\n");
             printf("n %d, m %d, k %d, lda %d, ldb %d\n", k, batch_size, m, m, m);
             op.printm("Wout", Wout, m, k);
+            op.printm("Xnoise", Xnoise, batch_size, m);
 
             // REMOVE FILL
             op.fill(H, k * batch_size, 0);
             op.printm("H before", H, k, batch_size);
+
 
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
 
