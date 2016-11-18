@@ -487,7 +487,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		ok = k;
 	}
-	row_major_a = &a;
+	row_major_a = *a;
 	/*row_major_a.values = a->values;
 	row_major_a.columns = malloci(a->nnz * sizeof(int));
 	row_major_a.rowPointers = malloci((ok + 1) * sizeof(int));
