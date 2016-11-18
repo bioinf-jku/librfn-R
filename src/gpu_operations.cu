@@ -470,6 +470,11 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		const int ldc) const {
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
+	if (opA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		opA = CUSPARSE_OPERATION_TRANSPOSE;
+	} else {
+		opA = CUSPARSE_OPERATION_NON_TRANSPOSE;
+	}
 
 	int n_a = k;
 	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
