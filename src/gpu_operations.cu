@@ -471,13 +471,11 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
 
-	sparseMatrix* row_major_a = transpose(a, opA == CUSPARSE_OPERATION_NON_TRANSPOSE ? k : m);
+	sparseMatrix* row_major_a = transpose(a, opA != CUSPARSE_OPERATION_NON_TRANSPOSE ? k : m);
 
-	int nrow_a = a->m;
 	int ncol_a = k;
 	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		ncol_a = a->m;
-		nrow_a = k;
 	}
 
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a->m, n, ncol_a,
