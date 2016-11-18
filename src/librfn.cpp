@@ -302,10 +302,15 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     op.free(WWPinv);
     printf("free2");
     op.free(WWPchol);
+    printf("free2.1");
     op.free(WPWchol);
+    printf("free2.2");
     op.free(WPWinv);
+    printf("free2.3");
     op.free(Wtmp);
+    printf("free2.4");
     op.free(Xtmp);
+    printf("free2.5");
     op.free(XCov_diag);
     printf("free3");
     op.free_devicememory(X);
