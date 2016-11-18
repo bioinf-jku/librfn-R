@@ -468,6 +468,8 @@ void GPU_Operations::add_saltpepper_noise(sparseMatrix* X, const unsigned size, 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
 		const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
 		const int ldc) const {
+	printf("normal gemm\n");
+	printf("Entry Params m %d, n %d, k %d, opa %s, opb %s\n", m, n, k, transa, transb);
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
 	if (opA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
@@ -481,6 +483,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		n_a = m;
 	}
 
+	printf("Scsrmm2: m %d, n %d, k, %d, opA %d, opB %d\n", a->m, n, n_a, opA, opB);
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, a->m, n, n_a,
 			a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
 }
