@@ -460,7 +460,7 @@ public:
 
 	void printm(const char* name, const float* a, int n, int m) const {
 		printf("%s\n", name);
-		printMatrixCM(a, n, m, 0);
+		printMatrixRM(a, n, m, 0);
 	}
 
 	void printMatrixCM(const float* a, int n, int m, const char* fmt) const;
