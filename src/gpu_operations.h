@@ -297,7 +297,7 @@ public:
 	}
 
 	void free(void* ptr) const {
-		if (ptr != 0) {
+		if (ptr != 0 && ptr != &INVALID) {
 			CUDA_CALL(cudaFree(ptr));
 		}
 	}
