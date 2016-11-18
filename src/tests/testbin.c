@@ -159,6 +159,11 @@ int main(int argc, char** argv) {
     memcpy(W2, W1, m*k*sizeof(float));
     memcpy(P2, P1, m*sizeof(float));
 
+    float* W3 = (float*) malloc(m*k*sizeof(float));
+    float* P3 = (float*) malloc(m*sizeof(float));
+    memcpy(W3, W1, m*k*sizeof(float));
+    memcpy(P3, P1, m*sizeof(float));
+
     struct timeval t0, t1;
 
     //gettimeofday(&t0, 0);
@@ -184,6 +189,15 @@ int main(int argc, char** argv) {
     	printf("W\n");
     	printMat(W2, m, k);
     }
+    if (sparse == 3) {
+    	gettimeofday(&t0, 0);
+    	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	gettimeofday(&t1, 0);
+    	printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
+
+    	printf("W\n");
+    	printMat(W3, m, k);
+    }
     free(X);
     free(sp->columns);
     free(sp->rowPointers);
@@ -193,5 +207,7 @@ int main(int argc, char** argv) {
     free(P1);
     free(W2);
     free(P2);
+    free(W3);
+    free(P3);
     return 0;
 }
