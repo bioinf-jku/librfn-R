@@ -293,18 +293,21 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     op.free(dW);
     op.free(Sinv);
     op.free(U);
+    printf("free1");
     op.free(Schol);
     op.free(S);
     op.free(H);
     op.free(variance_H);
     op.free(Wout);
     op.free(WWPinv);
+    printf("free2");
     op.free(WWPchol);
     op.free(WPWchol);
     op.free(WPWinv);
     op.free(Wtmp);
     op.free(Xtmp);
     op.free(XCov_diag);
+    printf("free3");
     op.free_devicememory(X);
 
     op.to_host(W, W_host, m*k*sizeof(float));
