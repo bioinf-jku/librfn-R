@@ -508,18 +508,12 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 			const float beta, float *c,	const int ldc) {
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
-	sparseMatrix b_trans;
+	sparseMatrix* b_trans;
 
 	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		b_trans.values = b->values;
-		b_trans.columns = malloci(b->nnz * sizeof(int));
-		b_trans.rowPointers = malloci((n + 1) * sizeof(int));
-		b_trans.nnz = b->nnz;
-		b_trans.m = n;
-		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, b->m, n, b->nnz, b->values, b->rowPointers, b->columns, b_trans.values, b_trans.columns, b_trans.rowPointers,
-				CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
+		b_trans = transpose(b, n);
 	} else {
-		b_trans = *b;
+		b_trans = b;
 	}
 
 	int m_a = m; // number of rows of A
@@ -530,13 +524,13 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	}
 
 	int bufsize;
-	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans.nnz, &bufsize));
+	CUSPARSE_CALL(cusparseSgemvi_bufferSize(cusparse_handle, opA, m_a, n_a, b_trans->nnz, &bufsize));
 	void* buffer = get_buffer(bufsize);
 
-	int* row_pointers = (int*) std::malloc((b_trans.m + 1) * sizeof(int));
-	copy_to_host(b_trans.rowPointers, row_pointers, (b_trans.m + 1) * sizeof(int));
+	int* row_pointers = (int*) std::malloc((b_trans->m + 1) * sizeof(int));
+	copy_to_host(b_trans->rowPointers, row_pointers, (b_trans->m + 1) * sizeof(int));
 
-	for(unsigned r = 0; r < b_trans.m; ++r) {
+	for(unsigned r = 0; r < b_trans->m; ++r) {
 
 		int row_pointer = row_pointers[r];
 		int nnz = row_pointers[r + 1] - row_pointer;
@@ -547,7 +541,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 			CUBLAS_CALL(cublasSscal_v2(handle, n, &beta, &c[r * ldc], 1));
 		} else if (nnz > 0) {
 			CUSPARSE_CALL(cusparseSgemvi(cusparse_handle, opA, m_a, n_a, &alpha, a, lda, nnz,
-					&b_trans.values[row_pointer], &b_trans.columns[row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
+					&b_trans->values[row_pointer], &b_trans->columns[row_pointer], &beta, &c[r * ldc], CUSPARSE_INDEX_BASE_ZERO, buffer));
 		} else {
 			printf("Internal error");
 			exit(1);
@@ -558,8 +552,9 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	default_stream();
 
 	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		free(b_trans.columns);
-		free(b_trans.rowPointers);
+		free(b_trans->columns);
+		free(b_trans->rowPointers);
+		std::free(b_trans);
 	}
 	std::free(row_pointers);
 
