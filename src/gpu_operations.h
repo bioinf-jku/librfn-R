@@ -462,6 +462,11 @@ public:
 		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, x->m, ncol, x->nnz, x->values, x->rowPointers, x->columns, t->values,
 				t->columns, t->rowPointers, CUSPARSE_ACTION_NUMERIC, CUSPARSE_INDEX_BASE_ZERO));
 
+		printf("A\n");
+		printMatrixSP(x, 0);
+		printf("A^t\n");
+		printMatrixSP(t, 0);
+
 		return t;
 	}
 
