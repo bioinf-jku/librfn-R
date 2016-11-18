@@ -490,7 +490,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 			row_major_a.columns, row_major_a.rowPointers, CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
 
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a.m, n, a->m,
-			row_major_a.nnz, &alpha, &descr, row_major_a.values, row_major_a.rowPointers, row_major_a.columns, b, ldb, &beta, c, ldc));
+			row_major_a.nnz, &alpha, descr, row_major_a.values, row_major_a.rowPointers, row_major_a.columns, b, ldb, &beta, c, ldc));
 
 	free(row_major_a.columns);
 	free(row_major_a.rowPointers);
