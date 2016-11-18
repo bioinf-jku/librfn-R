@@ -493,7 +493,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 			const float beta, float *c,	const int ldc) {
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
-	const sparseMatrix* b_trans;
+	sparseMatrix* b_trans;
 
 	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		b_trans = transpose(b, n);
@@ -544,8 +544,8 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		free(b_trans->columns);
 		free(b_trans->rowPointers);
-		std::free(b_trans);
 	}
+	std::free(b_trans);
 	std::free(row_pointers);
 
 }
