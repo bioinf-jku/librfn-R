@@ -541,7 +541,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	default_stream();
 
 	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		free(row_major_a->values);
+		free(b_trans->values);
 		free(b_trans->columns);
 		free(b_trans->rowPointers);
 	}
