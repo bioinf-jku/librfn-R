@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
     //gettimeofday(&t1, 0);
     //printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
 
-    if (sparse == 0 || sparse > 1) {
+    if (sparse == 0) {
     	gettimeofday(&t0, 0);
     	int retval = train_gpu(X, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
     	printf("W\n");
     	printMat(W1, m, k);
     }
-    if (sparse == 1 || sparse > 1) {
+    if (sparse == 1) {
     	gettimeofday(&t0, 0);
     	int retval = train_gpu_sparse(sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
