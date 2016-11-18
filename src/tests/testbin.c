@@ -54,8 +54,8 @@ sparseMatrix* dense_to_sparse(float* dense, int n, int m) {
 	int ind = 0;
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < m; j++) {
-			if (dense[i+j*n] != 0) {
-				values[ind] = dense[i+j*n];
+			if (dense[i*m+j] != 0) {
+				values[ind] = dense[i*m+j];
 				columns[ind] = j;
 				ind++;
 			}
