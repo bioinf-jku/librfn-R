@@ -452,7 +452,7 @@ public:
 		return dest;
 	}
 
-	sparseMatrix* transpose(const sparseMatrix* x, int ncol) {
+	sparseMatrix* transpose(const sparseMatrix* x, int ncol) const {
 		sparseMatrix* t = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 		//t->values = x->values;
 		t->columns = malloci(x->nnz * sizeof(int));
