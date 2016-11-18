@@ -477,11 +477,16 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		n_a = m;
 	}
 
+	int ok = m;
+	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		ok = k;
+	}
 	row_major_a.values = a->values;
 	row_major_a.columns = malloci(a->nnz * sizeof(int));
 	row_major_a.rowPointers = malloci((n + 1) * sizeof(int));
 	row_major_a.nnz = a->nnz;
-	row_major_a.m = n_a;
+	row_major_a.m = ok;
+
 	CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, a->m, n, a->nnz, a->values, a->rowPointers, a->columns, row_major_a.values,
 			row_major_a.columns, row_major_a.rowPointers, CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
 
