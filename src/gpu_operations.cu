@@ -483,8 +483,8 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a->m, n, ncol_a,
 			row_major_a->nnz, &alpha, descr, row_major_a->values, row_major_a->rowPointers, row_major_a->columns, b, ldb, &beta, c, ldc));
 
-	free(row_major_a.columns);
-	free(row_major_a.rowPointers);
+	free(row_major_a->columns);
+	free(row_major_a->rowPointers);
 	std::free(row_major_a);
 }
 
@@ -493,12 +493,17 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 			const float beta, float *c,	const int ldc) {
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
-	sparseMatrix* b_trans;
+	const sparseMatrix* b_trans;
 
 	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		b_trans = transpose(b, n);
 	} else {
-		b_trans = b;
+		b_trans = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
+		b_trans->values = b->values;
+		b_trans->columns = b->columns;
+		b_trans->rowPointers = b->rowPointers;
+		b_trans->m = b->m;
+		b_trans->nnz = b->nnz;
 	}
 
 	int m_a = m; // number of rows of A
