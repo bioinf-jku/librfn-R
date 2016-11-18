@@ -454,6 +454,7 @@ public:
 
 	sparseMatrix* transpose(const sparseMatrix* x, int ncol) const {
 		sparseMatrix* t = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
+		t->values = malloc(x->nnz * sizeof(float));
 		t->columns = malloci(x->nnz * sizeof(int));
 		t->rowPointers = malloci((ncol + 1) * sizeof(int));
 		t->nnz = x->nnz;
