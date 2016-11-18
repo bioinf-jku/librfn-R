@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
     }
     if (sparse == 3) {
     	gettimeofday(&t0, 0);
-    	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
     	gettimeofday(&t1, 0);
     	printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
 
