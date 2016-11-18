@@ -41,7 +41,7 @@ sparseMatrix* dense_to_sparse(float* dense, int n, int m) {
 	rowPointers[0] = 0;
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < m; j++) {
-			if (dense[i+j*n] != 0) {
+			if (dense[i*m+j] != 0) {
 				nnz++;
 
 			}
