@@ -467,7 +467,7 @@ public:
 
 	// Useful for debugging
 	void printm(const char* name, const sparseMatrix *a, int n, int m) const {
-		printf("%s (sparse)\n", name);
+		printf("%s\n", name);
 		printMatrixSPM(a, n, m, 0);
 	}
 
