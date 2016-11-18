@@ -138,12 +138,12 @@ int main(int argc, char** argv) {
 
     sparseMatrix* sp = dense_to_sparse(X, n, m);
 
-    printf("Matrix\n");
-    printMat(X, n, m);
-    printf("Sparse\n");
-    printfl(sp->values, sp->nnz);
-    printi(sp->rowPointers, sp->m + 1);
-    printi(sp->columns, sp->nnz);
+    //printf("Matrix\n");
+    //printMat(X, n, m);
+    //printf("Sparse\n");
+    //printfl(sp->values, sp->nnz);
+    //printi(sp->rowPointers, sp->m + 1);
+    //printi(sp->columns, sp->nnz);
 
 
     float* W1 = (float*) malloc(m*k*sizeof(float));
@@ -177,8 +177,8 @@ int main(int argc, char** argv) {
     	gettimeofday(&t1, 0);
     	printf("time for gpu rfn(%d): %3.4fs\n", retval, time_diff(&t1, &t0));
 
-    	printf("W\n");
-    	printMat(W1, m, k);
+    	//printf("W\n");
+    	//printMat(W1, m, k);
     }
     if (sparse == 1) {
     	gettimeofday(&t0, 0);
@@ -186,8 +186,8 @@ int main(int argc, char** argv) {
     	gettimeofday(&t1, 0);
     	printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
 
-    	printf("W\n");
-    	printMat(W2, m, k);
+    	//printf("W\n");
+    	//printMat(W2, m, k);
     }
     if (sparse == 3) {
     	gettimeofday(&t0, 0);
@@ -195,8 +195,8 @@ int main(int argc, char** argv) {
     	gettimeofday(&t1, 0);
     	printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
 
-    	printf("W\n");
-    	printMat(W3, m, k);
+    	//printf("W\n");
+    	//printMat(W3, m, k);
     }
     free(X);
     free(sp->columns);
