@@ -483,7 +483,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	}
 	row_major_a.values = a->values;
 	row_major_a.columns = malloci(a->nnz * sizeof(int));
-	row_major_a.rowPointers = malloci((n + 1) * sizeof(int));
+	row_major_a.rowPointers = malloci((ok + 1) * sizeof(int));
 	row_major_a.nnz = a->nnz;
 	row_major_a.m = ok;
 
