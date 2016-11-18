@@ -487,7 +487,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	cusparseOperation_t opB = op_to_cusparse(transb);
 	sparseMatrix b_trans;
 
-	if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		b_trans.values = b->values;
 		b_trans.columns = malloci(b->nnz * sizeof(int));
 		b_trans.rowPointers = malloci((n + 1) * sizeof(int));
@@ -534,7 +534,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	synchronize_all_streams();
 	default_stream();
 
-	if (opB == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		free(b_trans.columns);
 		free(b_trans.rowPointers);
 	}
