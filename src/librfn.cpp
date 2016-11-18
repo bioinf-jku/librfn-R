@@ -23,24 +23,11 @@ template <class OP>
 int calculate_W_impl_invertMxM(OP& op, const float* W, const float* P, float* Wout,
                           const int k, const int m,
                           float* WWPchol, float* WWPinv) {
-	printf("%s\n", __FUNCTION__);
-	printf("W\n");
-	op.printMatrixCM(W, m, k, 0);
-
 	op.gemm("n","t", m, m, k, 1.0f, W, m, W, m, 0.0f, WWPchol, m);
-
-	printf("WWPchol\n");
-	op.printMatrixCM(WWPchol,m, m, 0);
-
-	printf("P\n");
-	op.prints(P, m);
     op.axpy(m, 1.0f, P, 1, WWPchol, m+1);
     op.fill_eye(WWPinv, m);
     op.posv("u", m, m, WWPchol, m, WWPinv, m);
     op.gemm("t", "n", m, k, m, 1.0f, WWPinv, m, W, m, 0.0f, Wout, m);
-
-    printf("Wout\n");
-    op.printMatrixCM(Wout, m, k, 0);
     return 0;
 }
 
@@ -50,19 +37,12 @@ template <class OP>
 int calculate_W_impl_invertKxK(OP& op, const float* W, const float* Pinv, float* Wout,
                            const int k, const int m,
                            float* Wtmp, float* WPWchol, float* WPWinv) {
-	printf("%s\n", __FUNCTION__);
-	printf("W\n");
-	op.printMatrixCM(W, m, k, 0);
-
     op.dgmm("l", m, k, W, m, Pinv, 1, Wtmp, m);
     op.gemm("t", "n", k, k, m, 1.0f, W, m, Wtmp, m, 0.0f, WPWchol, k);
     op.axpy(k, 1.0f, op.ones, 1, WPWchol, k+1);
     op.fill_eye(WPWinv, k);
     op.posv("u", k, k, WPWchol, k, WPWinv, k);
     op.gemm("n", "t", m, k, k, 1.0f, Wtmp, m, WPWinv, k, 0.0f, Wout, m);
-
-    printf("Wout\n");
-    op.printMatrixCM(Wout, m, k, 0);
     return 0;
 }
 
@@ -148,14 +128,11 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
         op.calculate_column_variance(X, batch_size, m, XCov_diag);
     
     for (int cur_iter = 0; cur_iter < n_iter; ++cur_iter) {
-    	printf("iter %d\n", cur_iter);
-        if (cur_iter % 25 == 0) {
+    	if (cur_iter % 25 == 0) {
             gettimeofday(&t1, 0);
             printf("epoch: %4d  (time: %6.2fs)\n", cur_iter, time_diff(&t1, &t0));
         }
         for (int cur_batch = 0; cur_batch < n_batches; ++cur_batch) {
-        	printf("batch %d\n", cur_batch);
-            
             if (isMoreHiddensThanFeatures) {
                 calculate_W_impl_invertMxM<OP>(op, W, P, Wout, k, m, WWPchol, WWPinv);
             } else {
@@ -168,8 +145,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             XType Xnoise;
             
             if (input_noise_type && input_noise_rate > 0.0f) {
-            	printf("memcpy matrix\n");
-                op.memcpy_matrix(Xtmp, X, batch_size, m, cur_batch);
+            	op.memcpy_matrix(Xtmp, X, batch_size, m, cur_batch);
                 switch(input_noise_type) {
                     case 1:  // dropout noise
                         op.dropout(Xtmp, batch_size*m, input_noise_rate);
@@ -190,14 +166,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             	Xnoise = op.get_batch(X, m, cur_batch, batch_size);
             }
             
-            printf("gemm\n");
-            printf("n %d, m %d, k %d, lda %d, ldb %d\n", k, batch_size, m, m, m);
-            op.printm("Wout", Wout, m, k);
-            op.printm("Xnoise", Xnoise, batch_size, m);
-
             op.gemm("t", "n", k, batch_size, m, 1.0f, Wout, m, Xnoise, m, 0.0f, H, k);
-
-            op.printm("H", H, k, batch_size);
 
             if (!(input_noise_type && input_noise_rate > 0.0f))
             {
@@ -214,39 +183,25 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                     printf("invalid activation type");
                     assert(false);
             }
-            op.printm("H after activation", H, k, batch_size);
 
             if (apply_scaling) {
                 op.calculate_column_variance(H, batch_size, k, variance_H);
                 op.invsqrt(variance_H, k);
                 op.scale_columns(H, batch_size, k, variance_H);
             }
-            op.printm("H after scaling", H, k, batch_size);
             if (dropout_rate > 0.0f) {
                 op.dropout(H, batch_size*k, dropout_rate);
             }
-            op.printm("H after dropout", H, k, batch_size);
-
             op.gemm("n", "t", k, k, batch_size, 1.0f/batch_size, H, k, H, k, 0.0f, S, k);
-            op.printm("S after Ht*H", S, k, k);
             if (isMoreHiddensThanFeatures) {
                 op.gemm("t", "n", k, k, m, -1.0f, Wout, m, W, m, 1.0f, S, k);
-                op.printm("S", S, k, k);
                 op.axpy(k, 1.0f, op.ones, 0, S, k+1);
             } else {
                 op.axpy(k*k, 1.0f, WPWinv, 1, S, 1);
             }
-            op.printm("S after axpy", S, k, k);
-
             XType XBatch = op.get_batch(X, m, cur_batch, batch_size);
-            op.printm("XBatch", XBatch, batch_size, m);
-            op.printm("H", H, k, batch_size);
-            op.printm("U before mult", U, m, k);
-            //op.fill(U, n * k, 0.0f);
-            printf("Other params %d, %d, %d, %d\n", m, k, batch_size, 42);
-            op.gemm("n", "t", m, k, batch_size,
-            		1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
-            op.printm("U after mult", U, m, k);
+
+            op.gemm("n", "t", m, k, batch_size, 1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
 
             if (applyNewtonUpdate) {
                 op.axpy(k, 1e-10, op.ones, 0, S, k+1);
@@ -267,12 +222,12 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             op.gemm("n", "n", m, k, k, 1.0f, W, m, S, k, -2.0f, U, m);
             op.gemm("n", "t", m, m, k, 1.0f, U, m, W, m, 0.0f, C, m);
             
-            if (batch_size < n)
-                //op.calculate_column_variance(X + cur_batch*batch_size*m, batch_size, m, dP);
+            if (batch_size < n) {
                 op.calculate_column_variance(XBatch, batch_size, m, dP);
-            else
+            } else {
                 op.memcpy(dP, XCov_diag, m*sizeof(float));
-            
+            }
+
             op.free_sparse(XBatch);
             
             op.axpy(m, 1.0f, C, m+1, dP, 1);
@@ -293,26 +248,18 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
     op.free(dW);
     op.free(Sinv);
     op.free(U);
-    printf("free1");
     op.free(Schol);
     op.free(S);
     op.free(H);
     op.free(variance_H);
     op.free(Wout);
     op.free(WWPinv);
-    printf("free2");
     op.free(WWPchol);
-    printf("free2.1");
     op.free(WPWchol);
-    printf("free2.2");
     op.free(WPWinv);
-    printf("free2.3");
     op.free(Wtmp);
-    printf("free2.4");
     op.free(Xtmp);
-    printf("free2.5");
     op.free(XCov_diag);
-    printf("free3");
     op.free_devicememory(X);
 
     op.to_host(W, W_host, m*k*sizeof(float));
