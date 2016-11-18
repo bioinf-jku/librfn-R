@@ -243,8 +243,9 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             op.printm("H", H, k, batch_size);
             op.printm("U before mult", U, m, k);
             //op.fill(U, n * k, 0.0f);
-            printf("Other params %d, %d, %d, %d", m, k, batch_size, 42.0f);
-            op.gemm("n", "t", m, k, batch_size, 1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
+            printf("Other params %d, %d, %d, %d\n", m, k, batch_size, 42.0f);
+            op.gemm("n", "t", m, k, batch_size,
+            		1.0f/batch_size, XBatch, m, H, k, 0.0f, U, m);
             op.printm("U after mult", U, m, k);
 
             if (applyNewtonUpdate) {
