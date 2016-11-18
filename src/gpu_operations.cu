@@ -470,37 +470,22 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		const int ldc) const {
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
-	sparseMatrix row_major_a;
-	int n_a = k;
-	if (opA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		n_a = m;
-	}
 
-	if (opA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		opA = CUSPARSE_OPERATION_TRANSPOSE;
-	} else {
-		opA = CUSPARSE_OPERATION_NON_TRANSPOSE;
-	}
+	sparseMatrix* row_major_a = transpose(a, opA == CUSPARSE_OPERATION_NON_TRANSPOSE ? k : m);
 
-
-	int ok = m;
+	int nrow_a = a->m;
+	int ncol_a = k;
 	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		ok = k;
+		ncol_a = a->m;
+		nrow_a = k;
 	}
-	row_major_a = *a;
-	/*row_major_a.values = a->values;
-	row_major_a.columns = malloci(a->nnz * sizeof(int));
-	row_major_a.rowPointers = malloci((ok + 1) * sizeof(int));
-	row_major_a.nnz = a->nnz;
-	row_major_a.m = ok;
-	CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, a->m, ok, a->nnz, a->values, a->rowPointers, a->columns, row_major_a.values,
-			row_major_a.columns, row_major_a.rowPointers, CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));*/
 
-	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a.m, n, n_a,//a->m,
-			row_major_a.nnz, &alpha, descr, row_major_a.values, row_major_a.rowPointers, row_major_a.columns, b, ldb, &beta, c, ldc));
-/*
+	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a->m, n, ncol_a,
+			row_major_a->nnz, &alpha, descr, row_major_a->values, row_major_a->rowPointers, row_major_a->columns, b, ldb, &beta, c, ldc));
+
 	free(row_major_a.columns);
-	free(row_major_a.rowPointers);*/
+	free(row_major_a.rowPointers);
+	std::free(row_major_a);
 }
 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
