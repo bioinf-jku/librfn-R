@@ -56,9 +56,9 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
           const float l2_weightdecay, const float l1_weightdecay, const float momentum,
           const int input_noise_type, const int activation_type, const int apply_scaling,
           const int applyNewtonUpdate, unsigned long seed, int gpu_id) {
-
-    if (batch_size == 1)
+    if (batch_size == 1) {
         printf ("batch_size == 1 not supported, switching to full batch mode");
+    }
 
     OP op(n, m, k, seed, gpu_id);
     XType X = op.to_device(X_host, m*n*sizeof(float));
