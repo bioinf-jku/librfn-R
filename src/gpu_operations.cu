@@ -468,22 +468,23 @@ void GPU_Operations::add_saltpepper_noise(sparseMatrix* X, const unsigned size, 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
 		const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
 		const int ldc) const {
-	printf("normal gemm\n");
-	printf("Entry Params m %d, n %d, k %d, opa %s, opb %s\n", m, n, k, transa, transb);
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
-	if (opA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
-		opA = CUSPARSE_OPERATION_TRANSPOSE;
-	} else {
-		opA = CUSPARSE_OPERATION_NON_TRANSPOSE;
-	}
+	sparseMatrix row_major_a;
 
 	int n_a = k;
 	if (opA != CUSPARSE_OPERATION_NON_TRANSPOSE) {
 		n_a = m;
 	}
 
-	printf("Scsrmm2: m %d, n %d, k, %d, opA %d, opB %d\n", a->m, n, n_a, opA, opB);
+	row_major_a.values = a->values;
+	row_major_a.columns = malloci(a->nnz * sizeof(int));
+	row_major_a.rowPointers = malloci((n + 1) * sizeof(int));
+	row_major_a.nnz = a->nnz;
+	row_major_a.m = n_a;
+	CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, a->m, n, a->nnz, a->values, a->rowPointers, a->columns, row_major_a.values,
+			row_major_a.columns, row_major_a.rowPointers, CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
+
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, a->m, n, n_a,
 			a->nnz, &alpha, descr, a->values, a->rowPointers, a->columns, b, ldb, &beta, c, ldc));
 }
