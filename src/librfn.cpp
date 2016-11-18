@@ -214,17 +214,21 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
                     printf("invalid activation type");
                     assert(false);
             }
+            op.printm("H after activation", H, k, batch_size);
 
             if (apply_scaling) {
                 op.calculate_column_variance(H, batch_size, k, variance_H);
                 op.invsqrt(variance_H, k);
                 op.scale_columns(H, batch_size, k, variance_H);
             }
+            op.printm("H after scaling", H, k, batch_size);
             if (dropout_rate > 0.0f) {
                 op.dropout(H, batch_size*k, dropout_rate);
             }
+            op.printm("H after dropout", H, k, batch_size);
+
             op.gemm("n", "t", k, k, batch_size, 1.0f/batch_size, H, k, H, k, 0.0f, S, k);
-            op.printm("S", S, k, k);
+            op.printm("S after Ht*H", S, k, k);
             if (isMoreHiddensThanFeatures) {
                 op.gemm("t", "n", k, k, m, -1.0f, Wout, m, W, m, 1.0f, S, k);
                 op.printm("S", S, k, k);
@@ -232,6 +236,7 @@ int train(XTypeConst X_host, float* W_host, float* P_host, const int n, const in
             } else {
                 op.axpy(k*k, 1.0f, WPWinv, 1, S, 1);
             }
+            op.printm("S after axpy", S, k, k);
 
             XType XBatch = op.get_batch(X, m, cur_batch, batch_size);
             op.printm("XBatch", XBatch, batch_size, m);

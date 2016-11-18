@@ -493,7 +493,8 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a.m, n, n_a,
 			row_major_a.nnz, &alpha, descr, row_major_a.values, row_major_a.rowPointers, row_major_a.columns, b, ldb, &beta, c, ldc));
 
-	// free
+	free(row_major_a.columns);
+	free(row_major_a.rowPointers);
 }
 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
