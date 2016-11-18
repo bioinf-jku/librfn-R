@@ -457,7 +457,7 @@ public:
 		//t->values = x->values;
 		t->columns = malloci(x->nnz * sizeof(int));
 		t->rowPointers = malloci((ncol + 1) * sizeof(int));
-		t->nnz = a->nnz;
+		t->nnz = x->nnz;
 		t->m = ncol;
 		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, x->m, ncol, x->nnz, NULL, x->rowPointers, x->columns, NULL,
 				t->columns, t->rowPointers, CUSPARSE_ACTION_SYMBOLIC, CUSPARSE_INDEX_BASE_ZERO));
