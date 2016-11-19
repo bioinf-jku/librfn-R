@@ -591,7 +591,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 			b2->values, b2->rowPointers, b2->columns, a, lda, &beta, c2, b2->m));
 
 	//6
-	CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, m, n, &alpha_t, c2, b2->m, &beta_t, NULL, 0, c, ldc));
+	CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, m, n, &alpha_t, c2, b2->m, &beta_t, NULL, n, c, ldc));
 
 	//free stuff l8evr
 }
