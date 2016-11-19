@@ -578,8 +578,16 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &alpha_t, c, ldc, &beta_t, NULL, 0, c2, ldc));
 	}
 
+	// 4.5
+	cusparseOperation_t opA2;
+	if (opA == CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		opA2 = CUSPARSE_OPERATION_TRANSPOSE;
+	} else {
+		opA2 = CUSPARSE_OPERATION_NON_TRANSPOSE;
+	}
+
 	//5)
-	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, opA, b2->m, k, b2_ncol, b2->nnz, &alpha, descr,
+	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, opA2, b2->m, k, b2_ncol, b2->nnz, &alpha, descr,
 			b2->values, b2->rowPointers, b2->columns, a, lda, &beta, c2, ldc));
 
 	//6
