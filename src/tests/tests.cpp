@@ -77,7 +77,7 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 	free(dest_rowPointers);
 }
 
-/*template<class OP>
+template<class OP>
 float* test_variance(OP& op, float* X, unsigned nrows, unsigned ncols, float* expected) {
 	float* var = (float*) op.malloc(ncols * sizeof(X[0]));
 	op.calculate_column_variance(X, nrows, ncols, var);
@@ -201,7 +201,7 @@ TEST_CASE( "Scale columns sparse [GPU]", "[operations]" ) {
 	gpu_op.free(s_d);
 	free_sparse_matrix_d(gpu_op, mat);
 }
-*/
+
 TEST_CASE( "gemm sparse GPU", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
