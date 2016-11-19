@@ -487,7 +487,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	std::free(row_major_a);
 }
 
-void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
+/*void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 			const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
 			const float beta, float *c,	const int ldc) {
 	cusparseOperation_t opA = op_to_cusparse(transa);
@@ -520,7 +520,6 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	copy_to_host(b_trans->rowPointers, row_pointers, (b_trans->m + 1) * sizeof(int));
 
 	for(unsigned r = 0; r < b_trans->m; ++r) {
-
 		int row_pointer = row_pointers[r];
 		int nnz = row_pointers[r + 1] - row_pointer;
 
@@ -547,7 +546,46 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	}
 	std::free(b_trans);
 	std::free(row_pointers);
+}*/
 
+void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k,
+			const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
+			const float beta, float *c,	const int ldc) {
+	cusparseOperation_t opA = op_to_cusparse(transa);
+	cusparseOperation_t opB = op_to_cusparse(transb);
+	sparseMatrix* b2;
+	float alpha_t = 1.0f;
+	float beta_t = 0.0f;
+
+	//3)
+	int b2_ncol = 0;
+	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		b2 = transpose(b, n);
+		b2_ncol = b->m;
+	} else {
+		b2 = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
+		b2->values = b->values;
+		b2->columns = b->columns;
+		b2->rowPointers = b->rowPointers;
+		b2->m = b->m;
+		b2->nnz = b->nnz;
+		b2_ncol = n;
+	}
+	//4)
+	float* c2 = c;
+	if (beta != 0.0f) {
+		c2 = malloc(m*n);
+		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &alpha_t, c, ldc, &beta_t, NULL, 0, c2, ldc));
+	}
+
+	//5)
+	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, CUSPARSE_OPERATION_NON_TRANSPOSE, opA, b2->m, k, b2_ncol, b2->nnz, &alpha, descr,
+			b2->values, b2->rowPointers, b2->columns, a, lda, &beta, c2, ldc));
+
+	//6
+	CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &alpha_t, c, ldc, &beta_t, NULL, 0, c2, ldc));
+
+	//free stuff l8evr
 }
 
 // Debugging
