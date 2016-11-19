@@ -102,7 +102,7 @@ TEST_CASE( "Calculate Variance", "[operations]" ) {
 	gpu_op.free(res_d);
 	gpu_op.free(X_d);
 }
-*/
+
 sparseMatrix* create_sparse_matrix_d(const GPU_Operations &gpu_op, const float* x, const int* c,
 		const int* p, unsigned m, unsigned nnz) {
 	sparseMatrix *mat = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
@@ -121,7 +121,7 @@ void free_sparse_matrix_d(const GPU_Operations &gpu_op, sparseMatrix* matrix) {
 	gpu_op.free(matrix->columns);
 	std::free(matrix);
 }
-/*
+
 void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const int* c,
 		const int* p, unsigned m, unsigned n, unsigned nnz, const float* expected) {
 	sparseMatrix* mat = create_sparse_matrix_d(gpu_op, x, c, p, m, nnz);
@@ -233,7 +233,7 @@ TEST_CASE( "gemm sparse GPU", "[operations]" ) {
 	gpu_op.free(b_d);
 	free_sparse_matrix_d(gpu_op, mat);
 }
-/*
+
 TEST_CASE( "gemm sparse GPU 2nd variant", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
@@ -375,7 +375,7 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 
 	/*for (unsigned i = 0; i < n * m; i++) {
 		CHECK(c_h[i] == e[i]);
-	}
+	}*/
 
     printf("buggy H\n");
     gpu_op.printMatrixCM(H, k, batch_size, 0);
@@ -385,7 +385,7 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 	gpu_op.free(H);
 	free_sparse_matrix_d(gpu_op, Xnoise);
 }
-*/
+
 TEST_CASE( "get_batch sparse", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
