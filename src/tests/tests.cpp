@@ -77,7 +77,7 @@ TEST_CASE( "memcpy matrix sparse", "[gpu]" ) {
 	free(dest_rowPointers);
 }
 
-template<class OP>
+/*template<class OP>
 float* test_variance(OP& op, float* X, unsigned nrows, unsigned ncols, float* expected) {
 	float* var = (float*) op.malloc(ncols * sizeof(X[0]));
 	op.calculate_column_variance(X, nrows, ncols, var);
@@ -201,7 +201,7 @@ TEST_CASE( "Scale columns sparse [GPU]", "[operations]" ) {
 	gpu_op.free(s_d);
 	free_sparse_matrix_d(gpu_op, mat);
 }
-
+*/
 TEST_CASE( "gemm sparse GPU", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
@@ -219,7 +219,7 @@ TEST_CASE( "gemm sparse GPU", "[operations]" ) {
 	int n = 2;
 	int k = 4;
 
-	gpu_op.gemm("n", "n", m, n, k, 1.0, mat, m, b_d, k, 0.0, c_d, m);
+	gpu_op.gemm("n", "t", m, n, k, 1.0, mat, m, b_d, k, 0.0, c_d, m);
 
 	float* c_h = (float*) std::malloc(2 * 5 * sizeof(float));
 
@@ -233,7 +233,7 @@ TEST_CASE( "gemm sparse GPU", "[operations]" ) {
 	gpu_op.free(b_d);
 	free_sparse_matrix_d(gpu_op, mat);
 }
-
+/*
 TEST_CASE( "gemm sparse GPU 2nd variant", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
@@ -375,7 +375,7 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 
 	/*for (unsigned i = 0; i < n * m; i++) {
 		CHECK(c_h[i] == e[i]);
-	}*/
+	}
 
     printf("buggy H\n");
     gpu_op.printMatrixCM(H, k, batch_size, 0);
@@ -385,7 +385,7 @@ TEST_CASE( "gemm sparse GPU bug", "[operations]" ) {
 	gpu_op.free(H);
 	free_sparse_matrix_d(gpu_op, Xnoise);
 }
-
+*/
 TEST_CASE( "get_batch sparse", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
