@@ -136,7 +136,7 @@ void test_sparse_variance(const GPU_Operations &gpu_op, const float* x, const in
 
 	free_sparse_matrix_d(gpu_op, mat);
 }
-
+/*
 TEST_CASE( "Calculate Variance sparse", "[operations]" ) {
 	GPU_Operations gpu_op(512, 512, 512, 0, -1);
 	float X_h[] = { 1.0, 2.0, 3.0, 4.0, 6.0, 10.0 };
@@ -233,7 +233,7 @@ TEST_CASE( "gemm sparse GPU", "[operations]" ) {
 	gpu_op.free(b_d);
 	free_sparse_matrix_d(gpu_op, mat);
 }
-
+*/
 TEST_CASE( "gemm sparse GPU 2nd variant", "[operations]" ) {
 	GPU_Operations gpu_op(1, 1, 1, 0, -1);
 
