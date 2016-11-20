@@ -575,7 +575,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	float* c2 = c;
 	if (beta != 0.0f) {
 		c2 = malloc(m*n);
-		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &alpha_t, c, ldc, &beta_t, NULL, 0, c2, ldc));
+		CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, n, m, &alpha_t, c, ldc, &beta_t, NULL, 0, c2, ldc));
 	}
 
 	// 4.5
