@@ -481,9 +481,9 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a->m, n, ncol_a,
 			row_major_a->nnz, &alpha, descr, row_major_a->values, row_major_a->rowPointers, row_major_a->columns, b, ldb, &beta, c, ldc));
 
-	free(row_major_a->values);
-	free(row_major_a->columns);
-	free(row_major_a->rowPointers);
+	//free(row_major_a->values);
+	//free(row_major_a->columns);
+	//free(row_major_a->rowPointers);
 	std::free(row_major_a);
 }
 
