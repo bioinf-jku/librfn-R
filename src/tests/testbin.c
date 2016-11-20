@@ -108,9 +108,9 @@ void printi(int* x, int n) {
 int main(int argc, char** argv) {
 	srand(123);
 
-    int n = 100000;
-    int m = 1000;
-    int k = 5000;
+    int n = 50000;
+    int m = 784;
+    int k = 2048;
     int n_iter = 10;
     int gpu_id = -1;
     int sparse = 1;
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
     if (argc > 4)
         gpu_id = atoi(argv[4]);
 
-    float dropout = 0.75;
+    float dropout = 0.8;
     float* X = (float*) malloc(n*m * sizeof(float));
     for (int i = 0; i < n*m; ++i) {
     	X[i] = 5.0f * rand_unif() - 0.5f;
