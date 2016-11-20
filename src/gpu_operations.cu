@@ -569,7 +569,7 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 		b2->rowPointers = b->rowPointers;
 		b2->m = b->m;
 		b2->nnz = b->nnz;
-		b2_ncol = n;
+		b2_ncol = k;
 	}
 	//4)
 	float* c2 = c;
