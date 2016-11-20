@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
     int k = 2048;
     int n_iter = 10;
     int gpu_id = -1;
-    int sparse = 0;
+    int sparse = 1;
 
     if (argc > 1)
     	sparse = atoi(argv[1]);
