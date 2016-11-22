@@ -205,6 +205,28 @@ __global__ void sparse_col_variance_kernel(const sparseMatrix X, float* var, con
 	}
 }
 
+__global__ void sparse_row_variance_kernel(const sparseMatrix X, float* var, const unsigned nrows,
+		const unsigned ncols) {
+	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
+	const unsigned num_threads = blockDim.x * gridDim.x;
+	for (unsigned i = tid; i < rows; i += num_threads) {
+		var[i] = 0.0;
+		int from = X.rowPointers[i];
+		int to = X.rowPointers[i + 1];
+		for (int j = from; j < to; ++j) {
+			var[i] += X.values[j];
+		}
+		float m = var[i] / ncols;
+		var[i] = 0.0;
+		for (int j = from; j < to; ++j) {
+			float tmp = X.values[j] - m;
+			var[i] += tmp * tmp;
+		}
+		var[i] += (ncol - to + from) * (m * m);
+		var[i] /= nrows;
+	}
+}
+
 __global__ void sparse_scale_columns_kernel(sparseMatrix X, float* a, const unsigned nrows, const unsigned ncols) {
 	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const unsigned num_threads = blockDim.x * gridDim.x;
@@ -432,9 +454,11 @@ void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
 
 void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols,
 		float* variance) const {
+	sparseMatrix* x_transpose = transpose(x, ncols);
 	int threads, blocks;
-	get_grid_sizes(ncols, &threads, &blocks);
-	sparse_col_variance_kernel<<<threads, blocks>>>(*X, variance, nrows, ncols);
+	get_grid_sizes(nrows, &threads, &blocks);
+	sparse_row_variance_kernel<<<threads, blocks>>>(*x_transpose, variance, ncols, nrows);
+//	sparse_col_variance_kernel<<<threads, blocks>>>(*X, variance, nrows, ncols);
 }
 
 void GPU_Operations::scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
