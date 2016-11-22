@@ -209,7 +209,7 @@ __global__ void sparse_row_variance_kernel(const sparseMatrix X, float* var, con
 		const unsigned ncols) {
 	const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
 	const unsigned num_threads = blockDim.x * gridDim.x;
-	for (unsigned i = tid; i < rows; i += num_threads) {
+	for (unsigned i = tid; i < nrows; i += num_threads) {
 		var[i] = 0.0;
 		int from = X.rowPointers[i];
 		int to = X.rowPointers[i + 1];
