@@ -21,6 +21,8 @@ library(Rcpp)
 #' @param apply_scaling Scale the data
 #' @param apply_newton_update Whether to use a Newton update (default) or a gradient descent step
 #' @param seed Seed for the random number generator
+#' @param use_gpu Use the gpu (default cpu). Works only for sparse input.
+#' @param gpu_id If use_gpu is true, use gpu with this id (default -1 selects one available)
 #' @return Returns a list of matrices \code{W}, \code{P}, \code{H}, 
 #'  \code{Wout}, whereas \code{W \%*\% H} is the noise-free reconstruction 
 #'  of the data \code{X} and \code{diag(P)} is the covariance matrix 
@@ -33,7 +35,7 @@ library(Rcpp)
 train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
    dropout_rate=0.0, input_noise_rate=0.0, l2_weightdecay=0.0,
    l1_weightdecay=0.0, h_threshold=0.0, momentum=0.0, noise_type="saltpepper",
-   activation="relu", apply_scaling=1, apply_newton_update=1, seed=-1)
+   activation="relu", apply_scaling=1, apply_newton_update=1, seed=-1, use_gpu=-1, gpu_id=-1)
 {
    if (is.data.frame(X))
       X <- data.matrix(X)
@@ -70,16 +72,33 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
       
       if (noise_type == 3)
          stop("cannot use Gaussian noise on sparse input matrix")
+     
+     rfn <- 'train_rfn_cpu_sparse'
+     calc_W <- 'calculate_W_sparse'
+     if (use_gpu)
+     {
+       res1 <- .Call('train_rfn_gpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
+                     as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
+                     input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
+                     as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
+                     as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
+       
+       Wout <- .Call('calculate_W_gpu_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+                     as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
+                     as.integer(gpu_id), PACKAGE = 'RFN')
+     }
+     else
+     {
+        res1 <- .Call('train_rfn_cpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
+           as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
+           input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
+           as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
+           as.integer(seed), PACKAGE = 'RFN')
       
-      res1 <- .Call('train_rfn_cpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
-         as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
-         input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
-         as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
-         as.integer(seed), PACKAGE = 'RFN')
-      
-      Wout <- .Call('calculate_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
-         as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
-         PACKAGE = 'RFN')
+        Wout <- .Call('calculate_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+          as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
+          PACKAGE = 'RFN')
+     }
    }
    else
    {
