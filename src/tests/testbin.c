@@ -108,9 +108,9 @@ void printi(int* x, int n) {
 int main(int argc, char** argv) {
 	srand(123);
 
-    int n = 10;
-    int m = 8;
-    int k = 4;
+    int n = 100000;
+    int m = 784;
+    int k = 5000;
     int n_iter = 10;
     int gpu_id = -1;
     int sparse = 1;
@@ -177,8 +177,8 @@ int main(int argc, char** argv) {
     	gettimeofday(&t1, 0);
     	printf("time for gpu rfn(%d): %3.4fs\n", retval, time_diff(&t1, &t0));
 
-    	printf("W\n");
-    	printMat(W1, m, k);
+    	//printf("W\n");
+    	//printMat(W1, m, k);
     }
     if (sparse == 1) {
     	gettimeofday(&t0, 0);
@@ -186,8 +186,8 @@ int main(int argc, char** argv) {
     	gettimeofday(&t1, 0);
     	printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
 
-    	printf("W\n");
-    	printMat(W2, m, k);
+    	//printf("W\n");
+    	//printMat(W2, m, k);
     }
     if (sparse == 3) {
     	gettimeofday(&t0, 0);
