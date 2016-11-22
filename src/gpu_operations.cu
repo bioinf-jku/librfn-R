@@ -454,11 +454,13 @@ void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
 
 void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols,
 		float* variance) const {
-	sparseMatrix* x_transpose = transpose(X, ncols);
 	int threads, blocks;
-	get_grid_sizes(nrows, &threads, &blocks);
-	sparse_row_variance_kernel<<<threads, blocks>>>(*x_transpose, variance, ncols, nrows);
-//	sparse_col_variance_kernel<<<threads, blocks>>>(*X, variance, nrows, ncols);
+	//sparseMatrix* x_transpose = transpose(X, ncols);
+	//get_grid_sizes(nrows, &threads, &blocks);
+	//	sparse_row_variance_kernel<<<threads, blocks>>>(*x_transpose, variance, ncols, nrows);
+
+	get_grid_sizes(ncols, &threads, &blocks);
+	sparse_col_variance_kernel<<<threads, blocks>>>(*X, variance, nrows, ncols);
 }
 
 void GPU_Operations::scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
