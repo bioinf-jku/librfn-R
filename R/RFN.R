@@ -73,11 +73,9 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
       if (noise_type == 3)
          stop("cannot use Gaussian noise on sparse input matrix")
      
-     rfn <- 'train_rfn_cpu_sparse'
-     calc_W <- 'calculate_W_sparse'
      if (use_gpu)
      {
-       res1 <- .Call('train_rfn_gpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
+       res1 <- .Call('train_gpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
                      as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
                      input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
@@ -89,13 +87,13 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
      }
      else
      {
-        res1 <- .Call('train_rfn_cpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
+        res1 <- .Call('train_cpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
            as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
            input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
            as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
            as.integer(seed), PACKAGE = 'RFN')
       
-        Wout <- .Call('calculate_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+        Wout <- .Call('calculate_W_cpu_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
           as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
           PACKAGE = 'RFN')
      }
@@ -103,16 +101,30 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
    else
    {
       #tX <- t(X) # convert X from colmajor to rowmajor
+      if (use_gpu)
+      {
+        res1 <- .Call('train_gpu', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
+                     as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
+                     input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
+                     as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
+                     as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
+       
+        Wout <- .Call('calculate_W_gpu', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+                     as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
+                     as.integer(gpu_id), PACKAGE = 'RFN')
+      }
+      else 
+      {
+        res1 <- .Call('train_cpu', X, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
+           as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
+           input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
+           as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
+           as.integer(seed), PACKAGE = 'RFN')
       
-      res1 <- .Call('train_rfn_cpu', X, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
-         as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
-         input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
-         as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
-         as.integer(seed), PACKAGE = 'RFN')
-      
-      Wout <- .Call('calculate_W', X, res1$W, res1$P, as.integer(n), as.integer(m), 
-         as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
-         PACKAGE = 'RFN')
+        Wout <- .Call('calculate_W_cpu', X, res1$W, res1$P, as.integer(n), as.integer(m), 
+           as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
+           PACKAGE = 'RFN')
+      }
    }
    
    # convert results from rowmajor to colmajor
