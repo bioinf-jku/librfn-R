@@ -222,7 +222,7 @@ public:
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
 			const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
-			const int ldc) const;
+			const int ldc);
 
 	void gemm(const char *transa, const char *transb, const int m, const int n, const int k,
 				const float alpha, const float *a, const int lda, const sparseMatrix* b, const int ldb,
@@ -357,7 +357,7 @@ public:
 	void add_saltpepper_noise(float* X, const unsigned size, const float noise_rate) const;
 	void add_gauss_noise(float* X, const unsigned size, const float noise_rate) const;
 
-	void calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* variances) const;
+	void calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* variances);
 	void scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const;
 	void scale_rows(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const;
 	void dropout(sparseMatrix* X, const unsigned size, const float dropout_rate) const;
@@ -452,7 +452,7 @@ public:
 		return dest;
 	}
 
-	sparseMatrix* transpose(const sparseMatrix* x, int ncol) const {
+	sparseMatrix* transpose(const sparseMatrix* x, int ncol) {
 		sparseMatrix* t = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
 		t->values = (float*) get_buffer(x->nnz * sizeof(float));
 				//malloc(x->nnz * sizeof(float));

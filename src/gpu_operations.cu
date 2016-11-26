@@ -453,7 +453,7 @@ void GPU_Operations::subtract_first_element(int* a, unsigned len) const {
 }
 
 void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsigned nrows, const unsigned ncols,
-		float* variance) const {
+		float* variance) {
 	int threads, blocks;
 	sparseMatrix* x_transpose = transpose(X, ncols);
 	get_grid_sizes(nrows, &threads, &blocks);
@@ -492,7 +492,7 @@ void GPU_Operations::add_saltpepper_noise(sparseMatrix* X, const unsigned size, 
 
 void GPU_Operations::gemm(const char *transa, const char *transb, const int m, const int n, const int k, const float alpha,
 		const sparseMatrix* a, const int lda, const float *b, const int ldb, const float beta, float *c,
-		const int ldc) const {
+		const int ldc) {
 	cusparseOperation_t opA = op_to_cusparse(transa);
 	cusparseOperation_t opB = op_to_cusparse(transb);
 
