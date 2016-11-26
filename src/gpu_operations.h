@@ -454,9 +454,12 @@ public:
 
 	sparseMatrix* transpose(const sparseMatrix* x, int ncol) const {
 		sparseMatrix* t = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
-		t->values = malloc(x->nnz * sizeof(float));
-		t->columns = malloci(x->nnz * sizeof(int));
-		t->rowPointers = malloci((ncol + 1) * sizeof(int));
+		t->values = (float*) get_buffer(x->nnz * sizeof(float));
+				//malloc(x->nnz * sizeof(float));
+		t->columns = (int*) get_buffer(x->nnz * sizeof(int));
+				//malloci(x->nnz * sizeof(int));
+		t->rowPointers = (int*) get_buffer((ncol + 1) * sizeof(int));
+				//malloci((ncol + 1) * sizeof(int));
 		t->nnz = x->nnz;
 		t->m = ncol;
 		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, x->m, ncol, x->nnz, x->values, x->rowPointers, x->columns, t->values,
