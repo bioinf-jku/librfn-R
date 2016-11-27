@@ -172,6 +172,7 @@ int main(int argc, char** argv) {
     //printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
 
     if (sparse == 0) {
+    	printf("using gpu dense implementation\n");
     	gettimeofday(&t0, 0);
     	int retval = train_gpu(X, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
@@ -181,6 +182,7 @@ int main(int argc, char** argv) {
     	//printMat(W1, m, k);
     }
     if (sparse == 1) {
+    	printf("using gpu sparse implementation\n");
     	gettimeofday(&t0, 0);
     	int retval = train_gpu_sparse(sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
@@ -189,7 +191,19 @@ int main(int argc, char** argv) {
     	//printf("W\n");
     	//printMat(W2, m, k);
     }
+    if (sparse == 2) {
+    	printf("using cpu dense implementation\n");
+    	gettimeofday(&t0, 0);
+    	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
+    	gettimeofday(&t1, 0);
+    	printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
+
+    	//printf("W\n");
+    	//printMat(W3, m, k);
+    }
     if (sparse == 3) {
+    	printf("using cpu sparse implementation\n");
+
     	gettimeofday(&t0, 0);
     	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
     	gettimeofday(&t1, 0);
