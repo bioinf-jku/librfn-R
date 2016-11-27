@@ -458,8 +458,11 @@ void GPU_Operations::calculate_column_variance(const sparseMatrix* X, const unsi
 	sparseMatrix* x_transpose = transpose(X, ncols);
 	get_grid_sizes(nrows, &threads, &blocks);
 	sparse_row_variance_kernel<<<threads, blocks>>>(*x_transpose, variance, ncols, nrows);
-
+	free(x_transpose->columns);
+	free(x_transpose->values);
+	free(x_transpose->rowPointers);
 	std::free(x_transpose);
+
 }
 
 void GPU_Operations::scale_columns(sparseMatrix* X, const unsigned nrows, const unsigned ncols, float* s) const {
@@ -506,6 +509,10 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 	CUSPARSE_CALL(cusparseScsrmm2(cusparse_handle, opA, opB, row_major_a->m, n, ncol_a,
 			row_major_a->nnz, &alpha, descr, row_major_a->values, row_major_a->rowPointers, row_major_a->columns, b, ldb, &beta, c, ldc));
 
+
+	free(row_major_a->columns);
+	free(row_major_a->values);
+	free(row_major_a->rowPointers);
 	std::free(row_major_a);
 }
 
@@ -614,8 +621,13 @@ void GPU_Operations::gemm(const char *transa, const char *transb, const int m, c
 
 	//6
 	CUBLAS_CALL(cublasSgeam(handle, CUBLAS_OP_T, CUBLAS_OP_T, m, n, &alpha_t, c2, b2->m, &beta_t, (float*)0, b2->m, c, ldc));
-
+	if (opB != CUSPARSE_OPERATION_NON_TRANSPOSE) {
+		free(b2->columns);
+		free(b2->values);
+		free(b2->rowPointers);
+	}
 	std::free(b2);
+
 }
 
 // Debugging

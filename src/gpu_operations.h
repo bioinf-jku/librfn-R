@@ -254,7 +254,7 @@ public:
 		float* buffer = (float*) get_buffer(bufsize * sizeof(float));
 
 		CUSOLVER_CALL(cusolverDnSpotrf(cudense_handle, ul, n, a, lda, buffer, bufsize, devinfo));
-		CUDA_CALL(cudaMemcpy(&info, devinfo, sizeof(info), cudaMemcpyDeviceToHost));
+		CUDA_CALL(cudaMemcpy(&info, devinfo, sizeof(int), cudaMemcpyDeviceToHost));
 		return info;
 	}
 
@@ -454,12 +454,12 @@ public:
 
 	sparseMatrix* transpose(const sparseMatrix* x, int ncol) {
 		sparseMatrix* t = (sparseMatrix*) std::malloc(sizeof(sparseMatrix));
-		t->values = (float*) get_buffer(x->nnz * sizeof(float));
-				//malloc(x->nnz * sizeof(float));
-		t->columns = (int*) get_buffer(x->nnz * sizeof(int));
-				//malloci(x->nnz * sizeof(int));
-		t->rowPointers = (int*) get_buffer((ncol + 1) * sizeof(int));
-				//malloci((ncol + 1) * sizeof(int));
+		t->values = //(float*) get_buffer(x->nnz * sizeof(float));
+				malloc(x->nnz * sizeof(float));
+		t->columns = //(int*) get_buffer(x->nnz * sizeof(int));
+				malloci(x->nnz * sizeof(int));
+		t->rowPointers = //(int*) get_buffer((ncol + 1) * sizeof(int));
+				malloci((ncol + 1) * sizeof(int));
 		t->nnz = x->nnz;
 		t->m = ncol;
 		CUSPARSE_CALL(cusparseScsr2csc(cusparse_handle, x->m, ncol, x->nnz, x->values, x->rowPointers, x->columns, t->values,
