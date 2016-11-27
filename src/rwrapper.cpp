@@ -104,6 +104,47 @@ RcppExport SEXP train_rfn_cpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, S
 
 #ifndef NOGPU
 
+RcppExport SEXP train_rfn_gpu(SEXP Xs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP n_iters,
+   SEXP batch_sizes, SEXP etaWs, SEXP etaPs, SEXP minPs, SEXP h_thresholds, SEXP dropout_rates,
+   SEXP input_noise_rates, SEXP l2_weightdecays, SEXP l1_weightdecays, SEXP momentums,
+   SEXP noise_types, SEXP apply_relus, SEXP apply_scalings, SEXP apply_newton_updates, SEXP seeds)
+{
+   BEGIN_RCPP
+
+   int n = as<int>(ns);
+   int m = as<int>(ms);
+   int k = as<int>(ks);
+
+   std::vector<float> X = as<std::vector<float> >(Xs);
+   std::vector<float> W = as<std::vector<float> >(Ws);
+   std::vector<float> P = as<std::vector<float> >(Ps);
+
+   GetRNGstate();
+
+   clock_t t = clock();
+   train_cpu(&X[0], &W[0], &P[0], n, m, k, as<int>(n_iters), as<int>(batch_sizes), as<float>(etaWs),
+      as<float>(etaPs), as<float>(minPs), as<float>(h_thresholds), as<float>(dropout_rates),
+      as<float>(input_noise_rates), as<float>(l2_weightdecays), as<float>(l1_weightdecays),
+      as<float>(momentums), as<int>(noise_types), as<int>(apply_relus), as<int>(apply_scalings),
+      as<int>(apply_newton_updates), as<int>(seeds));
+   t = clock() - t;
+
+   PutRNGstate();
+
+   NumericVector W_ret = wrap(W);
+   W_ret.attr("dim") = Dimension(m, k); /* conversion from rowmajor 2 colmajor */
+
+   NumericVector P_ret = wrap(P);
+
+   List ret;
+   ret["W"] = W_ret;
+   ret["P"] = P_ret;
+   ret["T"] = wrap<double>(((double) t) / CLOCKS_PER_SEC);
+   return ret;
+
+   END_RCPP
+}
+
 RcppExport SEXP train_rfn_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP n_iters,
    SEXP batch_sizes, SEXP etaWs, SEXP etaPs, SEXP minPs, SEXP h_thresholds, SEXP dropout_rates,
    SEXP input_noise_rates, SEXP l2_weightdecays, SEXP l1_weightdecays, SEXP momentums,
@@ -214,6 +255,31 @@ RcppExport SEXP calculate_W_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEX
 }
 
 #ifndef NOGPU
+
+RcppExport SEXP calculate_W_gpu(SEXP Xs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP activations,
+   SEXP apply_scalings, SEXP h_thresholds)
+{
+   BEGIN_RCPP
+
+   int n = as<int>(ns);
+   int m = as<int>(ms);
+   int k = as<int>(ks);
+
+   std::vector<float> X = as<std::vector<float> >(Xs);
+   std::vector<float> W = as<std::vector<float> >(Ws);
+   std::vector<float> P = as<std::vector<float> >(Ps);
+   std::vector<float> Wout(k*m);
+
+   calculate_W_gpu(&X[0], &W[0], &P[0], &Wout[0], n, m, k, as<int>(activations),
+      as<int>(apply_scalings), as<float>(h_thresholds));
+
+   NumericVector Wout_ret = wrap(Wout);
+   Wout_ret.attr("dim") = Dimension(m, k);
+
+   return Wout_ret;
+
+   END_RCPP
+}
 
 RcppExport SEXP _calculate_W_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP activations,
    SEXP apply_scalings, SEXP h_thresholds, SEXP gpu_id)
