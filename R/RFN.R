@@ -35,7 +35,7 @@ library(Rcpp)
 train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
    dropout_rate=0.0, input_noise_rate=0.0, l2_weightdecay=0.0,
    l1_weightdecay=0.0, h_threshold=0.0, momentum=0.0, noise_type="saltpepper",
-   activation="relu", apply_scaling=1, apply_newton_update=1, seed=-1, use_gpu=-1, gpu_id=-1)
+   activation="relu", apply_scaling=1, apply_newton_update=1, seed=-1, use_gpu=0, gpu_id=-1)
 {
    if (is.data.frame(X))
       X <- data.matrix(X)
