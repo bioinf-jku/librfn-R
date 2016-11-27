@@ -108,9 +108,9 @@ void printi(int* x, int n) {
 int main(int argc, char** argv) {
 	srand(123);
 
-    int n = 100000;
+    int n = 10000;
     int m = 784;
-    int k = 5000;
+    int k = 2000;
     int n_iter = 10;
     int gpu_id = -1;
     int sparse = 1;
