@@ -81,7 +81,7 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
                      as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
        
-       Wout <- .Call('calculate_W_gpu_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+       Wout <- .Call('calculate_rfn_W_gpu_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
                      as.integer(gpu_id), PACKAGE = 'RFN')
      }
@@ -93,7 +93,7 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
            as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
            as.integer(seed), PACKAGE = 'RFN')
       
-        Wout <- .Call('calculate_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+        Wout <- .Call('calculate_rfn_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
           as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
           PACKAGE = 'RFN')
      }
@@ -109,7 +109,7 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
                      as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
        
-        Wout <- .Call('calculate_W_gpu', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+        Wout <- .Call('calculate_rfn_W_gpu', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
                      as.integer(gpu_id), PACKAGE = 'RFN')
       }
@@ -121,7 +121,7 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
            as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
            as.integer(seed), PACKAGE = 'RFN')
       
-        Wout <- .Call('calculate_W', X, res1$W, res1$P, as.integer(n), as.integer(m), 
+        Wout <- .Call('calculate_rfn_W', X, res1$W, res1$P, as.integer(n), as.integer(m), 
            as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
            PACKAGE = 'RFN')
       }

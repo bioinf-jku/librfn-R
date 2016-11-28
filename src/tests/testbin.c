@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
     if (argc > 4)
         gpu_id = atoi(argv[4]);
 
-    float dropout = 0.95;
+    float dropout = 0.96;
     float* X = (float*) malloc(n*m * sizeof(float));
     for (int i = 0; i < n*m; ++i) {
     	X[i] = 5.0f * rand_unif() - 0.5f;
