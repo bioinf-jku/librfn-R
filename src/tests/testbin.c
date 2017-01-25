@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <sys/time.h>
+#include <time.h>
 #include "../librfn.h"
 
 #ifndef M_PI
@@ -78,10 +78,6 @@ static double rand_normal(void) {
 }
 */
 
-float time_diff(struct timeval *t2, struct timeval *t1) {
-    long int diff = (t2->tv_usec + 1000000 * t2->tv_sec) - (t1->tv_usec + 1000000 * t1->tv_sec);
-    return diff / 1000000.0f;
-}
 
 void printMat(float* x, int n, int m) {
 	const char* format = "%1.3f ";
@@ -173,7 +169,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < m; ++i) {
        P[i] = rand_unif() - 0.5;
     }
-    double* times_spent = (double*) malloc(repeat_test * sizeof(double))
+    double* times_spent = (double*) malloc(repeat_test * sizeof(double));
     clock_t begin, end;
     int retval;
 
