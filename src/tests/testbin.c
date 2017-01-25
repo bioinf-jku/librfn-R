@@ -175,12 +175,13 @@ int main(int argc, char** argv) {
     }
     double* times_spent = (double*) malloc(repeat_test * sizeof(double))
     clock_t begin, end;
+    int retval;
 
     if (sparse == 0 || sparse == -1) {
     	printf("Testing GPU dense implementation.\n");
         for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            int retval = train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            retval = train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -192,7 +193,7 @@ int main(int argc, char** argv) {
     	printf("Testing GPU sparse implementation.\n");
     	for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            int retval = train_gpu_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            retval = train_gpu_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -203,7 +204,7 @@ int main(int argc, char** argv) {
     if (sparse == 2) {
     	printf("Testing CPU dense implementation.\n");
     	begin = clock();
-    	int retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
+        retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
     	end = clock();
         double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
@@ -211,7 +212,7 @@ int main(int argc, char** argv) {
     if (sparse == 3) {
     	printf("Testing CPU sparse implementation.\n");
     	begin = clock();
-    	int retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
+    	retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
     	end = clock();
         double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
