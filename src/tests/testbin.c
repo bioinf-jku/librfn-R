@@ -105,6 +105,22 @@ void printi(int* x, int n) {
 	printf("\n");
 }
 
+double calculate_mean(double* array, int length) {
+    double mean = 0;
+    for (int i = 0; i < length; i++) {
+        mean += array[i];
+    }
+    return mean / length;
+}
+
+double calculate_variance(double* array, double mean, int length) {
+    double sum = 0;
+    for (int i = 0; i < length; i++) {
+        sum += (array[i] - mean) * (array[i] - mean);
+    }
+    return sum / length;
+}
+
 int main(int argc, char** argv) {
     srand(123);
 
@@ -129,6 +145,18 @@ int main(int argc, char** argv) {
         repeat_test = atoi(argv[3]);
     }
 
+    if (argc > 4) {
+        n = atoi(argv[4]);
+    }
+
+    if (argc > 5) {
+        m = atoi(argv[5]);
+    }
+
+    if (argc > 6) {
+        k = atoi(argv[6]);
+    }
+
     float* X = (float*) malloc(n * m * sizeof(float));
     for (int i = 0; i < n * m; ++i) {
         X[i] = rand_unif() < dropout ? 0 : (5.0f * rand_unif() - 0.5f);
@@ -145,23 +173,32 @@ int main(int argc, char** argv) {
     for (int i = 0; i < m; ++i) {
        P[i] = rand_unif() - 0.5;
     }
+    double* times_spent = (double*) malloc(repeat_test * sizeof(double))
     clock_t begin, end;
 
-    if (sparse == 0) {
+    if (sparse == 0 || sparse == -1) {
     	printf("Testing GPU dense implementation.\n");
-    	begin = clock();
-        int retval = train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
-        end = clock();
-        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
+        for (int i = 0; i < repeat_test; i++) {
+            begin = clock();
+            int retval = train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            end = clock();
+            times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
+        }
+        double mean = calculate_mean(times_spent, repeat_test);
+        double variance = calculate_variance(times_spent, mean, repeat_test);
+    	printf("Retval %d; Mean time spent: %3.4fs; Variance: %3.4f\n", retval, mean, variance);
     }
-    if (sparse == 1) {
+    if (sparse == 1 || sparse == -1) {
     	printf("Testing GPU sparse implementation.\n");
-    	begin = clock();
-    	int retval = train_gpu_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
-    	end = clock();
-        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
+    	for (int i = 0; i < repeat_test; i++) {
+            begin = clock();
+            int retval = train_gpu_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            end = clock();
+            times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
+        }
+        double mean = calculate_mean(times_spent, repeat_test);
+        double variance = calculate_variance(times_spent, mean, repeat_test);
+        printf("Retval %d; Mean time spent: %3.4fs; Variance: %3.4f\n", retval, mean, variance);
     }
     if (sparse == 2) {
     	printf("Testing CPU dense implementation.\n");
@@ -186,5 +223,6 @@ int main(int argc, char** argv) {
     free(sp);
     free(W);
     free(P);
+    free(times_spent);
     return 0;
 }
