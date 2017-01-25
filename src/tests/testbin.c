@@ -106,70 +106,52 @@ void printi(int* x, int n) {
 }
 
 int main(int argc, char** argv) {
-	srand(123);
+    srand(123);
 
     int n = 10000;
     int m = 784;
-    int k = 2000;
+    int k = 5000;
     int n_iter = 10;
     int gpu_id = -1;
     int sparse = 1;
+    float dropout = 0.95;
 
-    if (argc > 1)
+    if (argc > 1) {
     	sparse = atoi(argv[1]);
+    }
 
-    if (argc > 2)
-        n_iter = atoi(argv[2]);
+    if (argc > 2) {
+        dropout = atof(argv[2]);
+    }
 
-    if (argc > 3)
-        m = atoi(argv[3]);
-
-    if (argc > 4)
-        gpu_id = atoi(argv[4]);
-
-    float dropout = 0.96;
-    float* X = (float*) malloc(n*m * sizeof(float));
-    for (int i = 0; i < n*m; ++i) {
-    	X[i] = 5.0f * rand_unif() - 0.5f;
-    	if (rand_unif() < dropout) {
-    		X[i] = 0;
-    	}
+    float* X = (float*) malloc(n * m * sizeof(float));
+    for (int i = 0; i < n * m; ++i) {
+        X[i] = rand_unif() < dropout ? 0 : (5.0f * rand_unif() - 0.5f);
     }
 
     sparseMatrix* sp = dense_to_sparse(X, n, m);
 
-    //printf("Matrix\n");
-    //printMat(X, n, m);
-    //printf("Sparse\n");
-    //printfl(sp->values, sp->nnz);
-    //printi(sp->rowPointers, sp->m + 1);
-    //printi(sp->columns, sp->nnz);
+    float* W1 = (float*) malloc(m * k * sizeof(float));
+    float* P1 = (float*) malloc(m * sizeof(float));
 
-
-    float* W1 = (float*) malloc(m*k*sizeof(float));
-    float* P1 = (float*) malloc(m*sizeof(float));
-
-    for (int i = 0; i < m*k; ++i)
+    for (int i = 0; i < m*k; ++i) {
        W1[i] = rand_unif() - 0.5;
-    for (int i = 0; i < m; ++i)
+    }
+    for (int i = 0; i < m; ++i) {
        P1[i] = rand_unif() - 0.5;
+    }
 
-    float* W2 = (float*) malloc(m*k*sizeof(float));
-    float* P2 = (float*) malloc(m*sizeof(float));
+    float* W2 = (float*) malloc(m * k * sizeof(float));
+    float* P2 = (float*) malloc(m * sizeof(float));
     memcpy(W2, W1, m*k*sizeof(float));
     memcpy(P2, P1, m*sizeof(float));
 
-    float* W3 = (float*) malloc(m*k*sizeof(float));
-    float* P3 = (float*) malloc(m*sizeof(float));
-    memcpy(W3, W1, m*k*sizeof(float));
-    memcpy(P3, P1, m*sizeof(float));
+    float* W3 = (float*) malloc(m * k * sizeof(float));
+    float* P3 = (float*) malloc(m * sizeof(float));
+    memcpy(W3, W1, m * k * sizeof(float));
+    memcpy(P3, P1, m * sizeof(float));
 
     struct timeval t0, t1;
-
-    //gettimeofday(&t0, 0);
-    //train_cpu(de, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
-    //gettimeofday(&t1, 0);
-    //printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
 
     if (sparse == 0) {
     	printf("using gpu dense implementation\n");
@@ -177,9 +159,6 @@ int main(int argc, char** argv) {
     	int retval = train_gpu(X, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
     	printf("time for gpu rfn(%d): %3.4fs\n", retval, time_diff(&t1, &t0));
-
-    	//printf("W\n");
-    	//printMat(W1, m, k);
     }
     if (sparse == 1) {
     	printf("using gpu sparse implementation\n");
@@ -187,9 +166,6 @@ int main(int argc, char** argv) {
     	int retval = train_gpu_sparse(sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
     	gettimeofday(&t1, 0);
     	printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
-
-    	//printf("W\n");
-    	//printMat(W2, m, k);
     }
     if (sparse == 2) {
     	printf("using cpu dense implementation\n");
@@ -208,9 +184,6 @@ int main(int argc, char** argv) {
     	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
     	gettimeofday(&t1, 0);
     	printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
-
-    	//printf("W\n");
-    	//printMat(W3, m, k);
     }
     free(X);
     free(sp->columns);
