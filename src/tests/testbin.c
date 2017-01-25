@@ -184,11 +184,7 @@ int main(int argc, char** argv) {
     free(sp->rowPointers);
     free(sp->values);
     free(sp);
-    free(W1);
-    free(P1);
-    free(W2);
-    free(P2);
-    free(W3);
-    free(P3);
+    free(W);
+    free(P);
     return 0;
 }
