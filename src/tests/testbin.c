@@ -115,6 +115,7 @@ int main(int argc, char** argv) {
     int gpu_id = -1;
     int sparse = 1;
     float dropout = 0.95;
+    int repeat_test = 10;
 
     if (argc > 1) {
     	sparse = atoi(argv[1]);
@@ -124,6 +125,10 @@ int main(int argc, char** argv) {
         dropout = atof(argv[2]);
     }
 
+    if (argc > 3) {
+        repeat_test = atoi(argv[3]);
+    }
+
     float* X = (float*) malloc(n * m * sizeof(float));
     for (int i = 0; i < n * m; ++i) {
         X[i] = rand_unif() < dropout ? 0 : (5.0f * rand_unif() - 0.5f);
@@ -131,59 +136,48 @@ int main(int argc, char** argv) {
 
     sparseMatrix* sp = dense_to_sparse(X, n, m);
 
-    float* W1 = (float*) malloc(m * k * sizeof(float));
-    float* P1 = (float*) malloc(m * sizeof(float));
+    float* W = (float*) malloc(m * k * sizeof(float));
+    float* P = (float*) malloc(m * sizeof(float));
 
-    for (int i = 0; i < m*k; ++i) {
-       W1[i] = rand_unif() - 0.5;
+    for (int i = 0; i < m * k; ++i) {
+       W[i] = rand_unif() - 0.5;
     }
     for (int i = 0; i < m; ++i) {
-       P1[i] = rand_unif() - 0.5;
+       P[i] = rand_unif() - 0.5;
     }
-
-    float* W2 = (float*) malloc(m * k * sizeof(float));
-    float* P2 = (float*) malloc(m * sizeof(float));
-    memcpy(W2, W1, m*k*sizeof(float));
-    memcpy(P2, P1, m*sizeof(float));
-
-    float* W3 = (float*) malloc(m * k * sizeof(float));
-    float* P3 = (float*) malloc(m * sizeof(float));
-    memcpy(W3, W1, m * k * sizeof(float));
-    memcpy(P3, P1, m * sizeof(float));
-
-    struct timeval t0, t1;
+    clock_t begin, end;
 
     if (sparse == 0) {
-    	printf("using gpu dense implementation\n");
-    	gettimeofday(&t0, 0);
-    	int retval = train_gpu(X, W1, P1, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
-    	gettimeofday(&t1, 0);
-    	printf("time for gpu rfn(%d): %3.4fs\n", retval, time_diff(&t1, &t0));
+    	printf("Testing GPU dense implementation.\n");
+    	begin = clock();
+        int retval = train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+        end = clock();
+        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
     }
     if (sparse == 1) {
-    	printf("using gpu sparse implementation\n");
-    	gettimeofday(&t0, 0);
-    	int retval = train_gpu_sparse(sp, W2, P2, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
-    	gettimeofday(&t1, 0);
-    	printf("time for gpu sparse rfn: %3.4fs\n", time_diff(&t1, &t0));
+    	printf("Testing GPU sparse implementation.\n");
+    	begin = clock();
+    	int retval = train_gpu_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+    	end = clock();
+        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
     }
     if (sparse == 2) {
-    	printf("using cpu dense implementation\n");
-    	gettimeofday(&t0, 0);
-    	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
-    	gettimeofday(&t1, 0);
-    	printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
-
-    	//printf("W\n");
-    	//printMat(W3, m, k);
+    	printf("Testing CPU dense implementation.\n");
+    	begin = clock();
+    	int retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
+    	end = clock();
+        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
     }
     if (sparse == 3) {
-    	printf("using cpu sparse implementation\n");
-
-    	gettimeofday(&t0, 0);
-    	int retval = train_cpu(X, W3, P3, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
-    	gettimeofday(&t1, 0);
-    	printf("time for cpu rfn: %3.4fs\n", time_diff(&t1, &t0));
+    	printf("Testing CPU sparse implementation.\n");
+    	begin = clock();
+    	int retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
+    	end = clock();
+        double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
     }
     free(X);
     free(sp->columns);
