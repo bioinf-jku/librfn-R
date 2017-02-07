@@ -1,3 +1,8 @@
+## This scipt is a modification of the configure.ac file
+## from the permGPU package (version 0.14.9)
+## http://cran.r-project.org/web/packages/permGPU/
+## Licensed under GNU GPL 3 or later
+
 AC_INIT(sparse-rfn, version-0.1)
 
 ## Cuda Toolkit
@@ -30,5 +35,5 @@ AC_SUBST([NVCC])
 AC_SUBST([CUDA_LD])
 AC_SUBST([CUDA_INCLUDE])
 
-AC_CONFIG_FILES([src/Example])
+AC_CONFIG_FILES([src/Makevars])
 AC_OUTPUT
