@@ -1,0 +1,32 @@
+NVCC=@NVCC@
+CUDA_LD=@CUDA_LD@
+CUDA_INC=@CUDA_INCLUDE@
+
+
+PKG_LIBS=$(CUDA_LD) $(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS) -lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse
+PKG_CPPFLAGS=-DCOMPILE_FOR_R -I$(CUDA_INC)
+PKG_CXXFLAGS=-std=c++11
+
+# uncomment needed architectures as required
+NVCCFLAGS=--use_fast_math $(addprefix -Xcompiler , $(CXXFLAGS)) \
+#          -gencode arch=compute_20,code=sm_20 \
+           -gencode arch=compute_30,code=sm_35 \
+           -gencode arch=compute_50,code=sm_50
+#          -gencode arch=compute_10,code=sm_10 \
+#          -gencode arch=compute_30,code=\"sm_30,sm_35\"
+
+OBJECTS = gpu_operations.o nist_spblas.o librfn.o cpu_operations.o rwrapper.o
+
+all: $(SHLIB)
+gpu_operations.o: gpu_operations.cu
+	$(NVCC) -std=c++11 -Xcompiler -fPIC  -g $(NVCCFLAGS) -o gpu_operations.o -c gpu_operations.cu
+
+# math kernel library
+#PKG_LIBS=-L/opt/intel/mkl/lib/intel64 -lmkl_rt
+#PKG_CPPFLAGS=-I/opt/intel/mkl/include -DNOGPU -DCOMPILE_FOR_R -DMKL
+#PKG_CXXFLAGS=-std=c++0x
+
+# gpu and mkl
+#PKG_LIBS=-L/opt/intel/mkl/lib/intel64 -lmkl_rt - L/
+#PKG_CPPFLAGS=-I/opt/intel/mkl/include -DNOGPU -DCOMPILE_FOR_R -DMKL
+#PKG_CXXFLAGS=-std=c++0x
