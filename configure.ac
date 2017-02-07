@@ -18,22 +18,51 @@ NVCC=${CUDA_HOME}/bin/nvcc
 AC_CHECK_FILE([${NVCC}],,[AC_MSG_ERROR([nvcc not found!])])
 
 CUDA_INCLUDE=${CUDA_HOME}/include
-AC_MSG_CHECKING([for CUDA headers])
-AC_CHECK_FILE([${CUDA_INCLUDE}/cublas.h],,
-	[AC_MSG_ERROR([CUDA headers not found!])]
-)
+AC_CHECK_FILE([${CUDA_INCLUDE}/cublas.h],,[AC_MSG_ERROR([CUDA headers not found!])])
 
-AC_MSG_CHECKING([whether this is a 64-bit version of CUDA])
 AC_CHECK_FILE([${CUDA_HOME}/lib64/libcublas.so], [check_bit=64-bit])
 if test "${check_bit}" == "64-bit"; then
-	CUDA_LD="-L${CUDA_HOME}/lib64"
+	CUDA_LD_LOC="-L${CUDA_HOME}/lib64"
 else
-	CUDA_LD="-L${CUDA_HOME}/lib"
+	CUDA_LD_LOC="-L${CUDA_HOME}/lib"
+fi
+CUDA_LD="${CUDA_LD_LOC} -lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse"
+
+## MKL
+AC_SUBST([MKL_HOME])
+AM_CONDITIONAL([HAS_MKL_HOME], [test ! -z "$MKL_HOME"])
+AM_COND_IF([HAS_MKL_HOME],[],[AC_ARG_WITH([mkl-home],
+	[AC_HELP_STRING([--with-mkl-home=DIR],
+		[full path to MKL installation @<:@/opt/intel/mkl@:>@])],
+	[MKL_HOME="$withval"], [MKL_HOME=/opt/intel/mkl])])
+
+MKL_INCLUDE=${MKL_HOME}/include
+AC_CHECK_FILE([${MKL_INCLUDE}/mkl_blas.h],[has_mkl_blas_header=yes])
+if test "${has_mkl_blas_header}" == "yes"; then
+	AC_CHECK_FILE([${MKL_HOME}/lib],[has_mkl_lib=yes])
+	if test "${has_mkl_lib}" == "yes"; then
+		AC_CHECK_FILE([${MKL_HOME}/lib/intel64/libmkl_rt.so], [check_mkl_bit=64-bit])
+		if test "${check_mkl_bit}" == "64-bit"; then
+			MKL_LIB_LOC="${MKL_HOME}/lib/intel64"
+		else
+			MKL_LIB_LOC="${MKL_HOME}/lib/ia32"
+		fi
+		CPPFLAGS="-I${MKL_INCLUDE} -DMKL"
+		LIBS="-L${MKL_LIB_LOC} -lmkl_rt"
+	else
+		CPPFLAGS=""
+		LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
+	fi
+else
+	CPPFLAGS=""
+	LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
 fi
 
 AC_SUBST([NVCC])
 AC_SUBST([CUDA_LD])
 AC_SUBST([CUDA_INCLUDE])
+AC_SUBST([LIBS])
+AC_SUBST([CPPFLAGS])
 
 AC_CONFIG_FILES([src/Makevars])
 AC_OUTPUT

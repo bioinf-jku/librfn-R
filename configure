@@ -583,9 +583,13 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CPPFLAGS
 CUDA_INCLUDE
 CUDA_LD
 NVCC
+HAS_MKL_HOME_FALSE
+HAS_MKL_HOME_TRUE
+MKL_HOME
 HAS_CUDA_HOME_FALSE
 HAS_CUDA_HOME_TRUE
 CUDA_HOME
@@ -631,6 +635,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_cuda_home
+with_mkl_home
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1244,6 +1249,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-cuda-home=DIR    full path to CUDA installation [/usr/local/cuda]
+  --with-mkl-home=DIR     full path to MKL installation [/opt/intel/mkl]
 
 Report bugs to the package provider.
 _ACEOF
@@ -1723,8 +1729,6 @@ fi
 
 
 CUDA_INCLUDE=${CUDA_HOME}/include
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for CUDA headers" >&5
-$as_echo_n "checking for CUDA headers... " >&6; }
 as_ac_File=`$as_echo "ac_cv_file_${CUDA_INCLUDE}/cublas.h" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${CUDA_INCLUDE}/cublas.h" >&5
 $as_echo_n "checking for ${CUDA_INCLUDE}/cublas.h... " >&6; }
@@ -1746,12 +1750,9 @@ if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
 
 else
   as_fn_error $? "CUDA headers not found!" "$LINENO" 5
-
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether this is a 64-bit version of CUDA" >&5
-$as_echo_n "checking whether this is a 64-bit version of CUDA... " >&6; }
 as_ac_File=`$as_echo "ac_cv_file_${CUDA_HOME}/lib64/libcublas.so" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${CUDA_HOME}/lib64/libcublas.so" >&5
 $as_echo_n "checking for ${CUDA_HOME}/lib64/libcublas.so... " >&6; }
@@ -1774,10 +1775,117 @@ if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
 fi
 
 if test "${check_bit}" == "64-bit"; then
-	CUDA_LD="-L${CUDA_HOME}/lib64"
+	CUDA_LD_LOC="-L${CUDA_HOME}/lib64"
 else
-	CUDA_LD="-L${CUDA_HOME}/lib"
+	CUDA_LD_LOC="-L${CUDA_HOME}/lib"
 fi
+CUDA_LD="${CUDA_LD_LOC} -lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse"
+
+## MKL
+
+ if test ! -z "$MKL_HOME"; then
+  HAS_MKL_HOME_TRUE=
+  HAS_MKL_HOME_FALSE='#'
+else
+  HAS_MKL_HOME_TRUE='#'
+  HAS_MKL_HOME_FALSE=
+fi
+
+if test -z "$HAS_MKL_HOME_TRUE"; then :
+  else
+
+# Check whether --with-mkl-home was given.
+if test "${with_mkl_home+set}" = set; then :
+  withval=$with_mkl_home; MKL_HOME="$withval"
+else
+  MKL_HOME=/opt/intel/mkl
+fi
+
+fi
+
+MKL_INCLUDE=${MKL_HOME}/include
+as_ac_File=`$as_echo "ac_cv_file_${MKL_INCLUDE}/mkl_blas.h" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${MKL_INCLUDE}/mkl_blas.h" >&5
+$as_echo_n "checking for ${MKL_INCLUDE}/mkl_blas.h... " >&6; }
+if eval \${$as_ac_File+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  test "$cross_compiling" = yes &&
+  as_fn_error $? "cannot check for file existence when cross compiling" "$LINENO" 5
+if test -r "${MKL_INCLUDE}/mkl_blas.h"; then
+  eval "$as_ac_File=yes"
+else
+  eval "$as_ac_File=no"
+fi
+fi
+eval ac_res=\$$as_ac_File
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
+  has_mkl_blas_header=yes
+fi
+
+if test "${has_mkl_blas_header}" == "yes"; then
+	as_ac_File=`$as_echo "ac_cv_file_${MKL_HOME}/lib" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${MKL_HOME}/lib" >&5
+$as_echo_n "checking for ${MKL_HOME}/lib... " >&6; }
+if eval \${$as_ac_File+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  test "$cross_compiling" = yes &&
+  as_fn_error $? "cannot check for file existence when cross compiling" "$LINENO" 5
+if test -r "${MKL_HOME}/lib"; then
+  eval "$as_ac_File=yes"
+else
+  eval "$as_ac_File=no"
+fi
+fi
+eval ac_res=\$$as_ac_File
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
+  has_mkl_lib=yes
+fi
+
+	if test "${has_mkl_lib}" == "yes"; then
+		as_ac_File=`$as_echo "ac_cv_file_${MKL_HOME}/lib/intel64/libmkl_rt.so" | $as_tr_sh`
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${MKL_HOME}/lib/intel64/libmkl_rt.so" >&5
+$as_echo_n "checking for ${MKL_HOME}/lib/intel64/libmkl_rt.so... " >&6; }
+if eval \${$as_ac_File+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  test "$cross_compiling" = yes &&
+  as_fn_error $? "cannot check for file existence when cross compiling" "$LINENO" 5
+if test -r "${MKL_HOME}/lib/intel64/libmkl_rt.so"; then
+  eval "$as_ac_File=yes"
+else
+  eval "$as_ac_File=no"
+fi
+fi
+eval ac_res=\$$as_ac_File
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
+  check_mkl_bit=64-bit
+fi
+
+		if test "${check_mkl_bit}" == "64-bit"; then
+			MKL_LIB_LOC="${MKL_HOME}/lib/intel64"
+		else
+			MKL_LIB_LOC="${MKL_HOME}/lib/ia32"
+		fi
+		CPPFLAGS="-I${MKL_INCLUDE} -DMKL"
+		LIBS="-L${MKL_LIB_LOC} -lmkl_rt"
+	else
+		CPPFLAGS=""
+		LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
+	fi
+else
+	CPPFLAGS=""
+	LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
+fi
+
+
 
 
 
@@ -1932,6 +2040,10 @@ LTLIBOBJS=$ac_ltlibobjs
 
 if test -z "${HAS_CUDA_HOME_TRUE}" && test -z "${HAS_CUDA_HOME_FALSE}"; then
   as_fn_error $? "conditional \"HAS_CUDA_HOME\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAS_MKL_HOME_TRUE}" && test -z "${HAS_MKL_HOME_FALSE}"; then
+  as_fn_error $? "conditional \"HAS_MKL_HOME\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 
