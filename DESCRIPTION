@@ -3,7 +3,7 @@ Type: Package
 Title: Rectified Factor Networks
 Version: 0.1
 Date: 2016-02-19
-Author: Thomas Unterthiner, Thomas Adler
+Author: Thomas Unterthiner, Thomas Adler, Balazs Bencze
 Maintainer: Thomas Unterthiner <unterthiner@bioinf.jku.at>
 Description: This package implements the Rectified Factor Networks algorithm 
    as described by Clevert et al., 2014, which is an unsupervised 
