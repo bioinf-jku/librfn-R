@@ -48,20 +48,20 @@ if test "${has_mkl_blas_header}" == "yes"; then
 			MKL_LIB_LOC="${MKL_HOME}/lib/ia32"
 		fi
 		CPPFLAGS="-I${MKL_INCLUDE} -DMKL"
-		LIBS="-L${MKL_LIB_LOC} -lmkl_rt"
+		BL_LIBS="-L${MKL_LIB_LOC} -lmkl_rt"
 	else
 		CPPFLAGS=""
-		LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
+		BL_LIBS="\$(BLAS_LIBS) \$(LAPACK_LIBS) \$(FLIBS)"
 	fi
 else
 	CPPFLAGS=""
-	LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
+	BL_LIBS="\$(BLAS_LIBS) \$(LAPACK_LIBS) \$(FLIBS)"
 fi
 
 AC_SUBST([NVCC])
+AC_SUBST([BL_LIBS])
 AC_SUBST([CUDA_LD])
 AC_SUBST([CUDA_INCLUDE])
-AC_SUBST([LIBS])
 AC_SUBST([CPPFLAGS])
 
 AC_CONFIG_FILES([src/Makevars])

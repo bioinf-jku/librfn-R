@@ -2,12 +2,15 @@ NVCC=@NVCC@
 CUDA_LD=@CUDA_LD@
 CUDA_INC=@CUDA_INCLUDE@
 
-LIBS=@LIBS@
+BL_LIBS=@BL_LIBS@
 CPPFLAGS=@CPPFLAGS@
 
-PKG_LIBS=$(CUDA_LD) $(LIBS)
+PKG_LIBS=$(BL_LIBS) $(CUDA_LD) 
 PKG_CPPFLAGS=-DCOMPILE_FOR_R -I$(CUDA_INC) $(CPPFLAGS)
 PKG_CXXFLAGS=-std=c++11
+
+$(info PKG_LIBS is $(PKG_LIBS))
+$(info BL_LIBS is $(BL_LIBS))
 
 # uncomment needed architectures as required
 NVCCFLAGS=--use_fast_math $(addprefix -Xcompiler , $(CXXFLAGS)) \

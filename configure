@@ -586,6 +586,7 @@ LIBOBJS
 CPPFLAGS
 CUDA_INCLUDE
 CUDA_LD
+BL_LIBS
 NVCC
 HAS_MKL_HOME_FALSE
 HAS_MKL_HOME_TRUE
@@ -1825,6 +1826,7 @@ if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
   has_mkl_blas_header=yes
 fi
 
+##AC_CHECK_FILE([removethispiece.h],[has_mkl_blas_header=yes])
 if test "${has_mkl_blas_header}" == "yes"; then
 	as_ac_File=`$as_echo "ac_cv_file_${MKL_HOME}/lib" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${MKL_HOME}/lib" >&5
@@ -1875,14 +1877,14 @@ fi
 			MKL_LIB_LOC="${MKL_HOME}/lib/ia32"
 		fi
 		CPPFLAGS="-I${MKL_INCLUDE} -DMKL"
-		LIBS="-L${MKL_LIB_LOC} -lmkl_rt"
+		BL_LIBS="-L${MKL_LIB_LOC} -lmkl_rt"
 	else
 		CPPFLAGS=""
-		LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
+		BL_LIBS="\$(BLAS_LIBS) \$(LAPACK_LIBS) \$(FLIBS)"
 	fi
 else
 	CPPFLAGS=""
-	LIBS="$(BLAS_LIBS) $(LAPACK_LIBS) $(FLIBS)"
+	BL_LIBS="\$(BLAS_LIBS) \$(LAPACK_LIBS) \$(FLIBS)"
 fi
 
 
