@@ -65,16 +65,13 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
    W <- matrix(0.01*rnorm(n_hidden * m), ncol=n_hidden)
    P <- rep(0.1, m)
    
-   if (is(X, "dgCMatrix"))
-   {
+   if (is(X, "dgCMatrix")) {
       require(Matrix)
-      #tX <- Matrix::t(X) # convert X from colmajor to rowmajor
-      
+
       if (noise_type == 3)
          stop("cannot use Gaussian noise on sparse input matrix")
      
-     if (use_gpu)
-     {
+     if (use_gpu) { # sparse GPU
        res1 <- .Call('train_rfn_gpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
                      as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
                      input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
@@ -84,9 +81,7 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
        Wout <- .Call('calculate_rfn_W_gpu_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
                      as.integer(gpu_id), PACKAGE = 'RFN')
-     }
-     else
-     {
+     } else { # sparse CPU
         res1 <- .Call('train_rfn_cpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
            as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
            input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
@@ -97,24 +92,18 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
           as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
           PACKAGE = 'RFN')
      }
-   }
-   else
-   {
-      #tX <- t(X) # convert X from colmajor to rowmajor
-      if (use_gpu)
-      {
-        res1 <- .Call('train_rfn_gpu', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
+   } else {
+      if (use_gpu) { # dense GPU
+        res1 <- .Call('train_rfn_gpu', X, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
                      as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
                      input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
                      as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
        
-        Wout <- .Call('calculate_rfn_W_gpu', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+        Wout <- .Call('calculate_rfn_W_gpu', X, res1$W, res1$P, as.integer(n), as.integer(m), 
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
                      as.integer(gpu_id), PACKAGE = 'RFN')
-      }
-      else 
-      {
+      } else { # dense CPU
         res1 <- .Call('train_rfn_cpu', X, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
            as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
            input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
@@ -126,12 +115,6 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
            PACKAGE = 'RFN')
       }
    }
-   
-   # convert results from rowmajor to colmajor
-   #res1$W <- t(res1$W)
-   #dim(res1$W) <- c(n_hidden, m)
-   #Wout <- t(Wout)
-   #dim(Wout) <- c(n_hidden, m)
    
    H <- t(Wout) %*% X
    H <- pmax(as.matrix(H), h_threshold)
