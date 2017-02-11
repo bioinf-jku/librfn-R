@@ -281,7 +281,7 @@ RcppExport SEXP calculate_rfn_W_gpu(SEXP Xs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms,
    END_RCPP
 }
 
-RcppExport SEXP _calculate_rfn_W_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP activations,
+RcppExport SEXP calculate_rfn_W_gpu_sparse(SEXP Xs, SEXP rowvs, SEXP colvs, SEXP Ws, SEXP Ps, SEXP ns, SEXP ms, SEXP ks, SEXP activations,
    SEXP apply_scalings, SEXP h_thresholds, SEXP gpu_id)
 {
    BEGIN_RCPP
