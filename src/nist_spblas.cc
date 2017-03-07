@@ -1,4 +1,5 @@
-#include "sparse_matrix_op.h"
+
+typedef int spmat_t;
 
 #ifndef MKL
 /* this part wraps and implements the NIST interface */
@@ -7,8 +8,8 @@
 *
 * Sparse BLAS (Basic Linear Algebra Subprograms) Library
 *
-* A C++ implementation of the routines specified by the ANSI C 
-* interface specification of the Sparse BLAS in the BLAS Technical 
+* A C++ implementation of the routines specified by the ANSI C
+* interface specification of the Sparse BLAS in the BLAS Technical
 * Forum Standard[1].   For details, see [2].
 *
 * Mathematical and Computational Sciences Division
@@ -19,7 +20,7 @@
 * [1] BLAS Technical Forum: www.netlib.org/blas/blast-forum/
 * [2] I. S. Duff, M. A. Heroux, R. Pozo, "An Overview of the Sparse Basic
 *     Linear Algebra Subprograms: The new standard of the BLAS Techincal
-*     Forum,"  Vol. 28, No. 2, pp. 239-267,ACM Transactions on Mathematical 
+*     Forum,"  Vol. 28, No. 2, pp. 239-267,ACM Transactions on Mathematical
 *     Software (TOMS), 2002.
 *
 *
@@ -45,8 +46,8 @@
 #include <utility>
   /* pair defined here */
 
-#include "blas_sparse.h"
-#include "sparse_matrix_op.h"
+#include "blas_enum.h"
+#include "blas_sparse_proto.h"
 
 #include <cstring> /* for memset */
 #include <cassert> /* for assert */
@@ -71,9 +72,9 @@ namespace NIST_SPBLAS
 
 
 /**
-   Generic sparse matrix (base) class: defines only the structure 
-   (size, symmetry, etc.) and maintains state during construction, 
-   but does not specify the actual nonzero values, or their type. 
+   Generic sparse matrix (base) class: defines only the structure
+   (size, symmetry, etc.) and maintains state during construction,
+   but does not specify the actual nonzero values, or their type.
 
 */
 class Sp_mat
@@ -130,7 +131,7 @@ class Sp_mat
 
   public:
 
-    Sp_mat(int M, int N) : 
+    Sp_mat(int M, int N) :
       num_rows_(M),         /* default construction */
       num_cols_(N),
       num_nonzeros_(0),
@@ -201,7 +202,7 @@ class Sp_mat
 
     int is_lower_hermitian() const    { return lower_hermitian_; }
     int is_upper_hermitian() const    { return upper_hermitian_; }
-    int is_hermitian() const  { return lower_hermitian_ || 
+    int is_hermitian() const  { return lower_hermitian_ ||
                                        upper_hermitian_; }
     int is_general() const { return !( is_hermitian() || is_symmetric()) ; }
 
@@ -216,7 +217,7 @@ class Sp_mat
 
     int is_opt_regular() const { return opt_regular_; }
     int is_opt_irregular() const { return opt_irregular_; }
-    int is_opt_block() const { return opt_block_;} 
+    int is_opt_block() const { return opt_block_;}
     int is_opt_unassembled() const { return opt_unassembled_;}
 
     int K(int i) const { return (k_ ? i*k_ : K_[i] ); }
@@ -248,7 +249,7 @@ class Sp_mat
     void set_upper_hermitian()  { upper_hermitian_ = 1; }
     void set_lower_hermitian()  { lower_hermitian_ = 1; }
 
-  
+
     void set_const_block_parameters(int Mb, int Nb, int k, int l)
     {
       Mb_ = Mb;
@@ -269,7 +270,7 @@ class Sp_mat
       K_[0] = 0;
       for (int i=0; i<Mb; i++)
         K_[i+1] = k[i] + K_[i];
-      
+
       L_.resize(Nb+1);
       L_[0] = 0;
       for (int j=0; j<Mb; j++)
@@ -307,14 +308,14 @@ class TSp_mat : public Sp_mat
                         at end_construction() phase */
   private:
 
-    inline T sp_dot_product( const vector< pair<T, int> > &r, 
+    inline T sp_dot_product( const vector< pair<T, int> > &r,
         const T* x, int incx ) const
     {
         T sum(0);
 
         if (incx == 1)
         {
-          for ( typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+          for ( typename vector< pair<T,int> >::const_iterator p = r.begin();
             p < r.end(); p++)
           {
             //sum = sum + p->first * x[p->second];
@@ -323,25 +324,25 @@ class TSp_mat : public Sp_mat
         }
         else /* incx != 1 */
         {
-          for ( typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+          for ( typename vector< pair<T,int> >::const_iterator p = r.begin();
             p < r.end(); p++)
            {
             //sum = sum + p->first * x[p->second * incx];
             sum += p->first * x[p->second * incx];
             }
         }
-    
+
         return sum;
   }
 
-    inline T sp_conj_dot_product( const vector< pair<T, int> > &r, 
+    inline T sp_conj_dot_product( const vector< pair<T, int> > &r,
         const T* x, int incx ) const
     {
         T sum(0);
 
         if (incx == 1)
         {
-          for ( typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+          for ( typename vector< pair<T,int> >::const_iterator p = r.begin();
             p < r.end(); p++)
           {
             sum += conj(p->first) * x[p->second];
@@ -349,55 +350,55 @@ class TSp_mat : public Sp_mat
         }
         else /* incx != 1 */
         {
-          for ( typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+          for ( typename vector< pair<T,int> >::const_iterator p = r.begin();
             p < r.end(); p++)
            {
             //sum = sum + p->first * x[p->second * incx];
             sum += conj(p->first) * x[p->second * incx];
             }
         }
-    
+
         return sum;
   }
 
 
-  inline void sp_axpy( const T& alpha, const vector< pair<T,int> > &r, 
+  inline void sp_axpy( const T& alpha, const vector< pair<T,int> > &r,
       T*  y, int incy) const
   {
     if (incy == 1)
     {
-      for (typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+      for (typename vector< pair<T,int> >::const_iterator p = r.begin();
           p < r.end(); p++)
-       y[p->second] += alpha * p->first;  
+       y[p->second] += alpha * p->first;
 
     }
     else /* incy != 1 */
     {
-    for (typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+    for (typename vector< pair<T,int> >::const_iterator p = r.begin();
         p < r.end(); p++)
-      y[incy * p->second] += alpha * p->first;  
-    } 
-  } 
+      y[incy * p->second] += alpha * p->first;
+    }
+  }
 
-  inline void sp_conj_axpy( const T& alpha, const vector< pair<T,int> > &r, 
+  inline void sp_conj_axpy( const T& alpha, const vector< pair<T,int> > &r,
       T*  y, int incy) const
   {
     if (incy == 1)
     {
-      for (typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+      for (typename vector< pair<T,int> >::const_iterator p = r.begin();
           p < r.end(); p++)
-       y[p->second] += alpha * conj(p->first);  
+       y[p->second] += alpha * conj(p->first);
 
     }
     else /* incy != 1 */
     {
-    for (typename vector< pair<T,int> >::const_iterator p = r.begin(); 
+    for (typename vector< pair<T,int> >::const_iterator p = r.begin();
         p < r.end(); p++)
-      y[incy * p->second] += alpha * conj(p->first);  
-    } 
-  } 
+      y[incy * p->second] += alpha * conj(p->first);
+    }
+  }
 
-  void mult_diag(const T& alpha, const T* x, int incx, T* y, int incy) 
+  void mult_diag(const T& alpha, const T* x, int incx, T* y, int incy)
       const
   {
     const T* X = x;
@@ -409,7 +410,7 @@ class TSp_mat : public Sp_mat
     }
   }
 
-  void mult_conj_diag(const T& alpha, const T* x, int incx, T* y, int incy) 
+  void mult_conj_diag(const T& alpha, const T* x, int incx, T* y, int incy)
       const
   {
     const T* X = x;
@@ -422,7 +423,7 @@ class TSp_mat : public Sp_mat
   }
 
 
-  void nondiag_mult_vec(const T& alpha, const T* x, int incx, 
+  void nondiag_mult_vec(const T& alpha, const T* x, int incx,
       T* y, int incy) const
   {
 
@@ -440,7 +441,7 @@ class TSp_mat : public Sp_mat
     }
   }
 
-  void nondiag_mult_vec_conj(const T& alpha, const T* x, int incx, 
+  void nondiag_mult_vec_conj(const T& alpha, const T* x, int incx,
       T* y, int incy) const
   {
 
@@ -458,7 +459,7 @@ class TSp_mat : public Sp_mat
     }
   }
 
-  void nondiag_mult_vec_transpose(const T& alpha, const T* x, int incx, 
+  void nondiag_mult_vec_transpose(const T& alpha, const T* x, int incx,
       T* y, int incy) const
   {
     /* saxpy: y += (alpha * x[i]) row[i]  */
@@ -469,7 +470,7 @@ class TSp_mat : public Sp_mat
       sp_axpy( alpha * *X, S[i], y, incy);
   }
 
-  void nondiag_mult_vec_conj_transpose(const T& alpha, const T* x, int incx, 
+  void nondiag_mult_vec_conj_transpose(const T& alpha, const T* x, int incx,
       T* y, int incy) const
   {
     /* saxpy: y += (alpha * x[i]) row[i]  */
@@ -480,7 +481,7 @@ class TSp_mat : public Sp_mat
       sp_conj_axpy( alpha * *X, S[i], y, incy);
   }
 
-  void mult_vec(const T& alpha, const T* x, int incx, T* y, int incy) 
+  void mult_vec(const T& alpha, const T* x, int incx, T* y, int incy)
       const
   {
     nondiag_mult_vec(alpha, x, incx, y, incy);
@@ -493,7 +494,7 @@ class TSp_mat : public Sp_mat
   }
 
 
-  void mult_vec_transpose(const T& alpha, const T* x, int incx, T* y, 
+  void mult_vec_transpose(const T& alpha, const T* x, int incx, T* y,
       int incy) const
   {
 
@@ -507,7 +508,7 @@ class TSp_mat : public Sp_mat
   }
 
 
-  void mult_vec_conj_transpose(const T& alpha, const T* x, int incx, T* y, 
+  void mult_vec_conj_transpose(const T& alpha, const T* x, int incx, T* y,
       int incy) const
   {
 
@@ -525,7 +526,7 @@ class TSp_mat : public Sp_mat
 
 
 
-      
+
   int triangular_solve(T alpha, T* x, int incx ) const
   {
     if (alpha == (T) 0.0)
@@ -545,7 +546,7 @@ class TSp_mat : public Sp_mat
        if (alpha != (T) 1.0)
        {
         for (int i=0, ii=0; i<N; i++, ii += incx)
-            x[ii] /= alpha; 
+            x[ii] /= alpha;
        }
     }
     else if (is_upper_triangular())
@@ -558,7 +559,7 @@ class TSp_mat : public Sp_mat
       if (alpha != (T) 1.0)
       {
         for (int i=N-1, ii=(N-1)*incx ;   0<=i ;    i--, ii-=incx)
-          x[ii] /= alpha; 
+          x[ii] /= alpha;
       }
 
     }
@@ -591,7 +592,7 @@ class TSp_mat : public Sp_mat
     }
     else if (is_upper_triangular())
     {
-      
+
       for (int j=0, jj=0; j<N; j++, jj += incx)
       {
         x[jj] /= diag[j];
@@ -634,7 +635,7 @@ class TSp_mat : public Sp_mat
     }
     else if (is_upper_triangular())
     {
-      
+
       for (int j=0, jj=0; j<N; j++, jj += incx)
       {
         x[jj] /= conj(diag[j]);
@@ -658,19 +659,19 @@ class TSp_mat : public Sp_mat
  public:
 
   inline T& val(pair<T, int> &VP) { return VP.first; }
-  inline int& col_index(pair<T,int> &VP) { return VP.second; } 
+  inline int& col_index(pair<T,int> &VP) { return VP.second; }
 
   inline const T& val(pair<T, int> const &VP) const { return VP.first; }
-  inline int col_index(pair<T,int> const &VP) const { return VP.second; } 
+  inline int col_index(pair<T,int> const &VP) const { return VP.second; }
 
 
   TSp_mat( int M, int N) : Sp_mat(M,N), S(M), diag() {}
-  
+
   /* custom ctors */
   /* row select ctor */
   typedef typename vector< vector< pair<T, int> > >::const_iterator Siter_t;
   TSp_mat( int N, Siter_t first, Siter_t last) : Sp_mat(last-first,N), S(first, last), diag() { }
-  
+
    /* csr ctor */
    TSp_mat( int M, int N, T *x, int *row, int *col ) : Sp_mat(M, N), S(M), diag()
    {
@@ -679,7 +680,7 @@ class TSp_mat : public Sp_mat
          {
             S[i].push_back(make_pair(x[row[i] + j], col[row[i] + j]));
          }
-      
+
       num_nonzeros() = row[M];
    }
 
@@ -692,7 +693,7 @@ class TSp_mat : public Sp_mat
 
 /**
 
-    This function is the entry point for all of the insert routines in 
+    This function is the entry point for all of the insert routines in
     this implementation.  It fills the sparse matrix, one entry at a time.
     If matrix is declared unit_diagonal, then inserting any diagonal
     values is ignored.  If it is symmetric (upper/lower) or triangular
@@ -704,14 +705,14 @@ class TSp_mat : public Sp_mat
     then offsets are zero based.]
 
     @param val  the numeric value of entry A(i,j)
-    @param i  the row index of A(i,j)  
+    @param i  the row index of A(i,j)
     @param j  the column index of A(i,j)
 
     @return 0 if succesful, 1 otherwise
-*/  
+*/
   int insert_entry(T val, int i, int j)
   {
-    if (is_one_base())        
+    if (is_one_base())
     {
       i--;
       j--;
@@ -729,7 +730,7 @@ class TSp_mat : public Sp_mat
     if (is_new())
     {
       set_open();
-      
+
       if (is_triangular() || is_symmetric())
       {
         diag.resize(num_rows());
@@ -737,12 +738,12 @@ class TSp_mat : public Sp_mat
         if (is_unit_diag())
         {
           for (unsigned int ii=0; ii< diag.size(); ii++)
-              diag[ii] = T(1.0); 
+              diag[ii] = T(1.0);
         }
         else
         {
           for (unsigned int ii=0; ii< diag.size(); ii++)
-              diag[ii] = (T) 0.0; 
+              diag[ii] = (T) 0.0;
         }
       }
 
@@ -758,14 +759,14 @@ class TSp_mat : public Sp_mat
         }
         else /* if unit diagonal */
         {
-          if (val != (T) 1) 
+          if (val != (T) 1)
             ERROR_RETURN(0);    /* tries to insert non-unit diagonal */
         }
 
         if (is_upper_storage() && i > j)
             ERROR_RETURN(0);    /* tries to fill lower-triangular region */
-        else 
-        
+        else
+
           if (is_lower_storage() && i < j)
             ERROR_RETURN(0);  /* tries to fill upper-triangular region */
 
@@ -795,18 +796,18 @@ class TSp_mat : public Sp_mat
   int insert_row(int k, int nz, const T* Val, const int *J)
   {
     for (int i=0; i<nz; i++)
-      insert_entry(Val[i], k, J[i]);  
+      insert_entry(Val[i], k, J[i]);
     return 0;
   }
 
   int insert_col(int k, int nz, const T* Val, const int *I)
   {
     for (int i=0; i<nz; i++)
-      insert_entry(Val[i], I[i], k);  
+      insert_entry(Val[i], I[i], k);
     return 0;
   }
 
-  int insert_block(const T* Val, int row_stride, 
+  int insert_block(const T* Val, int row_stride,
         int col_stride, int bi, int bj)
   {
     /* translate from block index to global indices */
@@ -826,10 +827,10 @@ class TSp_mat : public Sp_mat
 
 
 
-  int usmv(enum blas_trans_type transa, const T& alpha, const  T* x , int incx, 
+  int usmv(enum blas_trans_type transa, const T& alpha, const  T* x , int incx,
     T* y, int incy) const
   {
-    
+
   ASSERT_RETURN(is_valid(), -1);
 
   if (transa == blas_no_trans)
@@ -842,14 +843,14 @@ class TSp_mat : public Sp_mat
     mult_vec_transpose(alpha, x, incx, y, incy);
   else
     ERROR_RETURN(1);
-    
-  
+
+
     return 0;
 
   }
 
 
-  int usmm(enum blas_order_type ordera, enum blas_trans_type transa, 
+  int usmm(enum blas_order_type ordera, enum blas_trans_type transa,
     int nrhs, const T& alpha, const  T* b, int ldb, T* C, int ldC) const
   {
     if (ordera == blas_rowmajor)
@@ -879,7 +880,7 @@ class TSp_mat : public Sp_mat
   {
       if (transa == blas_trans)
         return transpose_triangular_solve(alpha, x, incx);
-      else 
+      else
       if (transa == blas_conj_trans)
         return transpose_triangular_conj_solve(alpha, x, incx);
       else
@@ -899,7 +900,7 @@ class TSp_mat : public Sp_mat
       /* for each column of C, perform a usmv */
       for (int i=0; i<nrhs; i++)
       {
-        ussv( 
+        ussv(
             transa, alpha, &C[i], ldC );
       }
       return 0;
@@ -916,7 +917,7 @@ class TSp_mat : public Sp_mat
     }
     else
       ERROR_RETURN(1);
-  } 
+  }
 
 
 
@@ -937,7 +938,7 @@ class TSp_mat : public Sp_mat
         cout << i << "    " << i << "     " << diag[i] << "\n";
     }
   }
-  
+
   /* custom, these functions assume irregular structure */
 
    inline void colmeans( T *means )
@@ -945,28 +946,28 @@ class TSp_mat : public Sp_mat
       for (typename vector< vector< pair<T, int> > >::const_iterator i = S.begin(); i < S.end(); i++)
          for (typename vector< pair<T, int> >::const_iterator v = i->begin(); v < i->end(); v++)
             means[v->second] += v->first;
-      
+
       for (int j = 0; j < num_cols(); j++)
          means[j] /= num_rows();
    }
-   
+
    inline void rowmeans( T *means )
    {
       for (int i = 0; i < num_rows(); i++)
          for (typename vector< pair<T, int> >::const_iterator v = S[i].begin(); v < S[i].end(); v++)
             means[i] += v->first;
-      
+
       for (int i = 0; i < num_rows(); i++)
          means[i] /= num_cols();
    }
-   
+
    inline void colvars( T *vars )
    {
       vector<T> means(num_cols());
       vector<int> nnz(num_cols());
-      
+
       colmeans(&means[0]);
-      
+
       for (typename vector< vector< pair<T, int> > >::const_iterator i = S.begin(); i < S.end(); i++)
          for (typename vector< pair<T, int> >::const_iterator v = i->begin(); v < i->end(); v++)
          {
@@ -974,21 +975,21 @@ class TSp_mat : public Sp_mat
             vars[v->second] += x * x;
             nnz[v->second]++;
          }
-      
+
       for (int j = 0; j < num_cols(); j++)
       {
          vars[j] += means[j] * means[j] * (num_rows() - nnz[j]);
          vars[j] /= num_rows();
       }
    }
-   
+
    inline void rowvars( T * vars )
    {
       vector<T> means(num_rows());
       vector<int> nnz(num_rows());
-      
+
       rowmeans(&means[0]);
-      
+
       for (int i = 0; i < num_rows(); i++)
          for (typename vector< pair<T, int> >::const_iterator v = S[i].begin(); v < S[i].end(); v++)
          {
@@ -996,47 +997,47 @@ class TSp_mat : public Sp_mat
             vars[i] += x * x;
             nnz[i]++;
          }
-      
+
       for (int i = 0; i < num_rows(); i++)
       {
          vars[i] += means[i] * means[i] * (num_cols() - nnz[i]);
          vars[i] /= num_cols();
       }
    }
-   
+
    inline void scalecols( T *s )
    {
       for (typename vector< vector< pair<T, int> > >::iterator i = S.begin(); i < S.end(); i++)
          for (typename vector< pair<T, int> >::iterator v = i->begin(); v < i->end(); v++)
             v->first *= s[v->second];
    }
-   
+
    inline void scalerows( T *s )
    {
       for (int i = 0; i < num_rows(); i++)
          for (typename vector< pair<T, int> >::iterator v = S[i].begin(); v < S[i].end(); v++)
             v->first *= s[i];
    }
-   
+
    inline TSp_mat<T> *rowsubset( int first_row, int nrow )
    {
       TSp_mat<T> *copy = new TSp_mat<T>(num_cols(), S.begin() + first_row, S.begin() + first_row + nrow);
-      copy->set_open(); 
-      
+      copy->set_open();
+
       int nnz = 0;
-      
+
       for (typename vector< vector< pair<T, int> > >::iterator i = copy->S.begin(); i < copy->S.end(); i++)
          nnz += i->size();
-      
+
       copy->num_nonzeros() = nnz;
       return copy;
    }
-   
+
    inline void setelement( int row, int col, T val )
    {
       vector< pair<T, int> > &rowv = S[row];
       int i;
-      
+
       for (i = 0; i < rowv.size(); i++)
       {
          if (rowv[i].second < col)
@@ -1063,19 +1064,19 @@ class TSp_mat : public Sp_mat
             break;
          }
       }
-      
+
       if (i == rowv.size()) /* insertion at end of row */
       {
          rowv.push_back(make_pair(val, col));
          num_nonzeros()++;
       }
    }
-   
+
    inline T &getelement( int row, int col )
    {
       vector< pair<T, int> > &rowv = S[row];
       int i;
-      
+
       for (i = 0; i < rowv.size(); i++)
       {
          if (rowv[i].second < col)
@@ -1093,7 +1094,7 @@ class TSp_mat : public Sp_mat
             return rowv[i].first;
          }
       }
-      
+
       if (i == rowv.size()) /* insertion at end of row */
       {
          rowv.push_back(make_pair(T(), col));
@@ -1101,12 +1102,12 @@ class TSp_mat : public Sp_mat
          return rowv[i].first;
       }
    }
-   
+
    /* returns pointer to element if allocated, NULL otherwise */
    inline T *getelementp(int row, int col)
    {
       vector< pair<T, int> > &rowv = S[row];
-      
+
       for (int i = 0; i < rowv.size(); i++)
       {
          if (rowv[i].second < col)
@@ -1123,72 +1124,74 @@ class TSp_mat : public Sp_mat
          }
       }
    }
-   
+
    /* rowmajor only */
-   void usgemm(enum blas_side_type sidea, enum blas_trans_type transa, enum blas_trans_type transb, 
+   void usgemm(enum blas_side_type sidea, enum blas_trans_type transa, enum blas_trans_type transb,
       int nohs, const T &alpha, const T *B, int ldB, const T &beta, T *C, int ldC)
    {
       const bool ra = (sidea == blas_right_side);
       const bool ta = (transa == blas_trans);
       const bool tb = (transb == blas_trans);
-      
+
       const int idxb = (ra == tb ? 1 : ldB);
       const int incb = (ra == tb ? ldB : 1);
       const int idxc = (ra ? ldC : 1); /* if A is left, compute C's columns, otherwise C's rows */
       const int incc = (ra ? 1 : ldC); /* with matrix-vetor products */
       const int lenc = (ra == ta ? num_rows() : num_cols()) * nohs;
-      
+
       /* set A's transposition to have A's rows (no trans) or cols (trans) used in usmv */
       transa = (ra == ta ? blas_no_trans : blas_trans);
-      
+
       if (beta == 0)
          memset(&C[0], 0, lenc * sizeof(T));
       else
          for (int i = 0; i < lenc; i++)
             C[i] *= beta;
-      
+
       for (int i = 0; i < nohs; i++)
          usmv( transa, alpha, &B[i * idxb], incb, &C[i * idxc], incc );
    }
-   
-   int usgemma(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb, 
+
+   int usgemma(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb,
       int nrhs, const T &alpha, const T *B, int ldB, const T &beta, T *C, int ldC)
    {
       const int idxb = (transb == blas_no_trans ? 1 : ldB);
       const int incb = (transb == blas_no_trans ? ldB : 1);
       const int lenc = (transa == blas_no_trans ? num_rows() : num_cols()) * nrhs;
-      
+
       for (int i = 0; i < lenc; i++)
          C[i] *= beta;
-      
+
       if (order == blas_rowmajor)
          for (int i = 0; i < nrhs; i++)
             usmv( transa, alpha, &B[i * idxb], incb, &C[i], ldC );
       else
          for (int i = 0; i < nrhs; i++)
             usmv( transa, alpha, &B[i * incb], idxb, &C[i * ldC], 1 );
+      return 0;
    }
-   
-   int usgemmb(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb, 
+
+   int usgemmb(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb,
       int nlhs, const T &alpha, const T *A, int ldA, const T &beta, T *C, int ldC)
    {
       const int idxa = (transa == blas_no_trans ? ldA : 1);
       const int inca = (transa == blas_no_trans ? 1 : ldA);
       const int lenc = (transb == blas_no_trans ? num_cols() : num_rows()) * nlhs;
-      
-      /* we need to build dot products with B's columns (not rows as usmv defaults); 
+
+      /* we need to build dot products with B's columns (not rows as usmv defaults);
        * passing inverse transb to usmv recovers */
       transb = (transb == blas_no_trans ? blas_trans : blas_no_trans);
-      
+
       for (int i = 0; i < lenc; i++)
          C[i] *= beta;
-      
+
       if (order == blas_rowmajor)
          for (int i = 0; i < nlhs; i++)
             usmv( transb, alpha, &A[i * idxa], inca, &C[i], ldC );
       else
          for (int i = 0; i < nlhs; i++)
             usmv( transb, alpha, &A[i * inca], idxa, &C[i * ldC], 1 );
+      return 0;
    }
 };
 
@@ -1215,7 +1218,7 @@ static unsigned int Table_active_matrices = 0;
 int Table_insert(Sp_mat* S);
 int Table_remove(unsigned int i);
 
-/* 
+/*
   finds an empty slot in global sparse marix table, and fills it with
   given entry.  Returns -1 if no spot found, or table is corrupt.
 */
@@ -1245,7 +1248,7 @@ int Table_insert(Sp_mat* S)
   return -1;
 }
 
-/* 
+/*
   removes an exisiting sparse matrix from global table.  Returns 0, if
   successfull, 1 otherwise.
 */
@@ -1265,11 +1268,11 @@ int Table_remove(unsigned int i)
 
 void Sp_mat::print() const
 {
-  
+
 
   cout << "State : " <<
-    (is_void() ? "void" : 
-     is_new()  ? "new" :  
+    (is_void() ? "void" :
+     is_new()  ? "new" :
      is_open() ? "open" :
      is_valid() ? "valid" : "unknown") << "\n";
 
@@ -1290,7 +1293,7 @@ void Sp_mat::print() const
   cout << "irregular:  " << yesno(is_opt_irregular()) << "\n";
   cout << "block:      " << yesno(is_opt_block()) << "\n";
   cout << "unassembled:" << yesno(is_opt_unassembled()) << "\n";
-      
+
 #undef yesno
 }
 
@@ -1329,7 +1332,7 @@ using namespace NIST_SPBLAS;
 
 /* Level 1 */
 
-/* these macros are useful for creating some consistency between the 
+/* these macros are useful for creating some consistency between the
    various precisions and floating point types.
 */
 
@@ -1384,30 +1387,30 @@ typedef void *   SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT;
 #define SPBLAS_TO_FLOAT_OUT(x)  x
 #define SPBLAS_TO_DOUBLE_OUT(x) x
 #define SPBLAS_TO_COMPLEX_FLOAT_OUT(x)  reinterpret_cast<complex<float> *>(x)
-#define SPBLAS_TO_COMPLEX_DOUBLE_OUT(x) reinterpret_cast<complex<double> *>(x)  
+#define SPBLAS_TO_COMPLEX_DOUBLE_OUT(x) reinterpret_cast<complex<double> *>(x)
 
 #define SPBLAS_TO_FLOAT_IN_OUT(x)   x
 #define SPBLAS_TO_DOUBLE_IN_OUT(x)  x
 #define SPBLAS_TO_COMPLEX_FLOAT_IN_OUT(x)  reinterpret_cast<complex<float> *>(x)
-#define SPBLAS_TO_COMPLEX_DOUBLE_IN_OUT(x) reinterpret_cast<complex<double>*>(x)  
+#define SPBLAS_TO_COMPLEX_DOUBLE_IN_OUT(x) reinterpret_cast<complex<double>*>(x)
 
 
-#define SPBLAS_TO_VECTOR_DOUBLE_IN(x)   x 
-#define SPBLAS_TO_VECTOR_FLOAT_IN(x)  x 
+#define SPBLAS_TO_VECTOR_DOUBLE_IN(x)   x
+#define SPBLAS_TO_VECTOR_FLOAT_IN(x)  x
 #define SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN(x) \
                           reinterpret_cast<const complex<float>*>(x)
 #define SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN(x) \
                           reinterpret_cast<const complex<double>*>(x)
 
-#define SPBLAS_TO_VECTOR_DOUBLE_OUT(x)  x 
-#define SPBLAS_TO_VECTOR_FLOAT_OUT(x)   x 
+#define SPBLAS_TO_VECTOR_DOUBLE_OUT(x)  x
+#define SPBLAS_TO_VECTOR_FLOAT_OUT(x)   x
 #define SPBLAS_TO_VECTOR_COMPLEX_FLOAT_OUT(x) \
                           reinterpret_cast<complex<float>*>(x)
 #define SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_OUT(x) \
                           reinterpret_cast<complex<double>*>(x)
 
-#define SPBLAS_TO_VECTOR_DOUBLE_IN_OUT(x)   x 
-#define SPBLAS_TO_VECTOR_FLOAT_IN_OUT(x)  x 
+#define SPBLAS_TO_VECTOR_DOUBLE_IN_OUT(x)   x
+#define SPBLAS_TO_VECTOR_FLOAT_IN_OUT(x)  x
 #define SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT(x) \
                           reinterpret_cast<complex<float>*>(x)
 #define SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT(x) \
@@ -1469,7 +1472,7 @@ int BLAS_ussp(blas_sparse_matrix A, int pname)
 
                                         /* optimizations not used */
         case (blas_regular )        :
-        case (blas_irregular)       : 
+        case (blas_irregular)       :
         case (blas_block)           :
         case (blas_unassembled)     :    return 0;
 
@@ -1490,9 +1493,9 @@ int BLAS_usgp(blas_sparse_matrix A, int pname)
 
     switch (pname)
     {
-        case (blas_num_rows)          : return S->num_rows(); 
-        case (blas_num_cols)          : return S->num_cols(); 
-        case (blas_num_nonzeros)      : return S->num_nonzeros(); 
+        case (blas_num_rows)          : return S->num_rows();
+        case (blas_num_cols)          : return S->num_cols();
+        case (blas_num_nonzeros)      : return S->num_nonzeros();
 
         case (blas_complex)           : return S->is_complex();
         case (blas_real)              : return S->is_real();
@@ -1507,8 +1510,8 @@ int BLAS_usgp(blas_sparse_matrix A, int pname)
         case (blas_symmetric)         : return S->is_symmetric();
         case (blas_hermitian)         : return S->is_hermitian();
 
-        case (blas_zero_base) : return S->is_zero_base(); 
-        case (blas_one_base) : return  S->is_one_base(); 
+        case (blas_zero_base) : return S->is_zero_base();
+        case (blas_one_base) : return  S->is_one_base();
 
 
         case (blas_rowmajor)          : return S->is_rowmajor();
@@ -1525,7 +1528,7 @@ int BLAS_usgp(blas_sparse_matrix A, int pname)
 
         default:                return -1;  /* invalid property */
     }
-} 
+}
 
 /* -------- */
 /*  USDS()  */
@@ -1550,12 +1553,12 @@ int BLAS_usds(int A)
 /* dummy routines for real version of usdot to compile. */
 
 inline const double& conj(const double &x)
-{ 
+{
   return x;
 }
 
 inline const float& conj(const float &x)
-{ 
+{
   return x;
 }
 
@@ -1652,43 +1655,43 @@ int BLAS_xuscr_insert_entry(blas_sparse_matrix A,  const T& val, int i, int j)
 
 }
 
-template <class T> 
-int BLAS_xuscr_insert_entries(blas_sparse_matrix A, int nz, const T* Val, 
+template <class T>
+int BLAS_xuscr_insert_entries(blas_sparse_matrix A, int nz, const T* Val,
       const int* I, const int *J)
 {
   return ((TSp_mat<T>*) Table[A])->insert_entries(nz, Val, I, J);
 }
 
 
-template <class T> 
-int BLAS_xuscr_insert_col(blas_sparse_matrix A, int j, int nz, const T* Val, 
+template <class T>
+int BLAS_xuscr_insert_col(blas_sparse_matrix A, int j, int nz, const T* Val,
       const int* indx)
 {
   return ((TSp_mat<T>*) Table[A])->insert_col(j, nz, Val, indx);
 }
 
-template <class T> 
-int BLAS_xuscr_insert_row(blas_sparse_matrix A, int i, int nz, const T* Val, 
+template <class T>
+int BLAS_xuscr_insert_row(blas_sparse_matrix A, int i, int nz, const T* Val,
       const int* indx)
 {
   return ((TSp_mat<T>*) Table[A])->insert_row(i, nz, Val, indx);
 }
 
-template <class T> 
-int BLAS_xuscr_insert_clique(blas_sparse_matrix A, int k, int l, const T* Val, 
-      const int row_stride, const int col_stride, const int *indx, 
+template <class T>
+int BLAS_xuscr_insert_clique(blas_sparse_matrix A, int k, int l, const T* Val,
+      const int row_stride, const int col_stride, const int *indx,
       const int *jndx)
 {
-  return ((TSp_mat<T>*) Table[A])->insert_clique(k, l, Val, row_stride, 
+  return ((TSp_mat<T>*) Table[A])->insert_clique(k, l, Val, row_stride,
             col_stride, indx, jndx);
 }
 
-template <class T> 
-int BLAS_xuscr_insert_block(blas_sparse_matrix A, const T* Val, 
+template <class T>
+int BLAS_xuscr_insert_block(blas_sparse_matrix A, const T* Val,
       const int row_stride, const int col_stride, int bi, int bj )
 {
-  return ((TSp_mat<T>*) Table[A])->insert_block(Val, 
-        row_stride, col_stride, bi, bj); 
+  return ((TSp_mat<T>*) Table[A])->insert_block(Val,
+        row_stride, col_stride, bi, bj);
 }
 
 inline int BLAS_xuscr_end(blas_sparse_matrix A)
@@ -1698,7 +1701,7 @@ inline int BLAS_xuscr_end(blas_sparse_matrix A)
 
 
 template <class T>
-int BLAS_xusmv(enum blas_trans_type transa, const T& alpha, 
+int BLAS_xusmv(enum blas_trans_type transa, const T& alpha,
     blas_sparse_matrix A, const T *x, int incx, T *y, int incy )
 {
   TSp_mat<T> *M = (TSp_mat<T> *) Table[A];
@@ -1710,8 +1713,8 @@ int BLAS_xusmv(enum blas_trans_type transa, const T& alpha,
 
 
 template <class T>
-int BLAS_xusmm(enum blas_order_type ordera, enum blas_trans_type transa, 
-    int nrhs, const T& alpha, blas_sparse_matrix A, 
+int BLAS_xusmm(enum blas_order_type ordera, enum blas_trans_type transa,
+    int nrhs, const T& alpha, blas_sparse_matrix A,
     const T *B, int ldB, T* C, int ldC)
 {
   TSp_mat<T> *M = (TSp_mat<T> *) Table[A];
@@ -1723,10 +1726,10 @@ int BLAS_xusmm(enum blas_order_type ordera, enum blas_trans_type transa,
 
 
 template <class T>
-int BLAS_xussv(enum blas_trans_type transa, const T& alpha, 
+int BLAS_xussv(enum blas_trans_type transa, const T& alpha,
     blas_sparse_matrix A, T *x, int incx)
 {
-  TSp_mat<T> *M = 
+  TSp_mat<T> *M =
         (TSp_mat<T> *) Table[A];
 
   ASSERT_RETURN(M->is_valid(), 1);
@@ -1735,10 +1738,10 @@ int BLAS_xussv(enum blas_trans_type transa, const T& alpha,
 }
 
 template <class T>
-int BLAS_xussm(enum blas_order_type orderA, enum blas_trans_type transa, 
+int BLAS_xussm(enum blas_order_type orderA, enum blas_trans_type transa,
     int nrhs, const T& alpha, blas_sparse_matrix A, T *C, int ldC)
 {
-  TSp_mat<T> *M = 
+  TSp_mat<T> *M =
         (TSp_mat<T> *) Table[A];
 
   ASSERT_RETURN(M->is_valid(), 1);
@@ -1753,73 +1756,73 @@ int BLAS_xussm(enum blas_order_type orderA, enum blas_trans_type transa,
 /*  ----  double  Level 1 rouintes ----- */
 /*********/
 
- void BLAS_DOUBLE_NAME(usdot)( 
-    enum blas_conj_type conj_flag, 
-    int  nz, 
-    SPBLAS_VECTOR_DOUBLE_IN x,  
-    const int *index,  
-    SPBLAS_VECTOR_DOUBLE_IN y, 
-    int incy, 
-    SPBLAS_DOUBLE_OUT r, 
+ void BLAS_DOUBLE_NAME(usdot)(
+    enum blas_conj_type conj_flag,
+    int  nz,
+    SPBLAS_VECTOR_DOUBLE_IN x,
+    const int *index,
+    SPBLAS_VECTOR_DOUBLE_IN y,
+    int incy,
+    SPBLAS_DOUBLE_OUT r,
     enum blas_base_type index_base)
 {
-   BLAS_xusdot(conj_flag, nz, 
-          SPBLAS_TO_VECTOR_DOUBLE_IN( x ), index, 
-          SPBLAS_TO_VECTOR_DOUBLE_IN( y ), incy, 
+   BLAS_xusdot(conj_flag, nz,
+          SPBLAS_TO_VECTOR_DOUBLE_IN( x ), index,
+          SPBLAS_TO_VECTOR_DOUBLE_IN( y ), incy,
           SPBLAS_TO_DOUBLE_OUT( r ), index_base);
 }
 
  void BLAS_DOUBLE_NAME(usaxpy)(
-    int nz, 
-    SPBLAS_DOUBLE_IN alpha, 
-    SPBLAS_VECTOR_DOUBLE_IN x, 
-    const int *index, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT y, 
-    int incy, 
+    int nz,
+    SPBLAS_DOUBLE_IN alpha,
+    SPBLAS_VECTOR_DOUBLE_IN x,
+    const int *index,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT y,
+    int incy,
     enum blas_base_type index_base)
 {
-  BLAS_xusaxpy(nz, SPBLAS_TO_DOUBLE_IN( alpha ), 
-      SPBLAS_TO_VECTOR_DOUBLE_IN( x ), index, 
-      SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( y ), 
+  BLAS_xusaxpy(nz, SPBLAS_TO_DOUBLE_IN( alpha ),
+      SPBLAS_TO_VECTOR_DOUBLE_IN( x ), index,
+      SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( y ),
       incy, index_base);
 }
 
- void BLAS_DOUBLE_NAME(usga)( 
-    int nz, 
-    SPBLAS_VECTOR_DOUBLE_IN y, 
-    int incy, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT x, 
+ void BLAS_DOUBLE_NAME(usga)(
+    int nz,
+    SPBLAS_VECTOR_DOUBLE_IN y,
+    int incy,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusga( nz, SPBLAS_TO_VECTOR_DOUBLE_IN( y ), incy, 
+  BLAS_xusga( nz, SPBLAS_TO_VECTOR_DOUBLE_IN( y ), incy,
         SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( x ), indx, index_base);
 
 }
 
- void BLAS_DOUBLE_NAME(usgz)( 
-    int nz, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT y, 
-    int incy, 
-    SPBLAS_VECTOR_DOUBLE_OUT x, 
+ void BLAS_DOUBLE_NAME(usgz)(
+    int nz,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT y,
+    int incy,
+    SPBLAS_VECTOR_DOUBLE_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusgz(nz, SPBLAS_TO_DOUBLE_IN_OUT(y ), incy, SPBLAS_TO_DOUBLE_OUT(  x ), 
+  BLAS_xusgz(nz, SPBLAS_TO_DOUBLE_IN_OUT(y ), incy, SPBLAS_TO_DOUBLE_OUT(  x ),
     indx, index_base);
 }
 
 
  void BLAS_DOUBLE_NAME(ussc)(
-    int nz, 
-    SPBLAS_VECTOR_DOUBLE_IN x, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT y, 
-    int incy, 
-    const int *index, 
+    int nz,
+    SPBLAS_VECTOR_DOUBLE_IN x,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT y,
+    int incy,
+    const int *index,
     enum blas_base_type index_base)
 {
-  BLAS_xussc(nz, SPBLAS_TO_VECTOR_DOUBLE_IN( x ), 
-  SPBLAS_TO_DOUBLE_IN_OUT( y ), incy, index, 
+  BLAS_xussc(nz, SPBLAS_TO_VECTOR_DOUBLE_IN( x ),
+  SPBLAS_TO_DOUBLE_IN_OUT( y ), incy, index,
   index_base);
 }
 
@@ -1833,7 +1836,7 @@ int BLAS_DOUBLE_NAME(uscr_begin)(int M, int N)
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_DOUBLE_NAME(uscr_block_begin)( 
+blas_sparse_matrix BLAS_DOUBLE_NAME(uscr_block_begin)(
     int Mb, int Nb, int k, int l )
 {
   TSp_mat<DOUBLE> *A = new TSp_mat<DOUBLE>(Mb*k, Nb*l);
@@ -1844,10 +1847,10 @@ blas_sparse_matrix BLAS_DOUBLE_NAME(uscr_block_begin)(
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_DOUBLE_NAME(uscr_variable_block_begin)( 
+blas_sparse_matrix BLAS_DOUBLE_NAME(uscr_variable_block_begin)(
     int Mb, int Nb, const int *k, const int *l )
 {
-  TSp_mat<DOUBLE> *A = new TSp_mat<DOUBLE>(  
+  TSp_mat<DOUBLE> *A = new TSp_mat<DOUBLE>(
                 accumulate(k, k+Mb, 0), accumulate(l, l+Nb, 0) );
 
   TSp_MAT_SET_DOUBLE(A);
@@ -1859,50 +1862,50 @@ blas_sparse_matrix BLAS_DOUBLE_NAME(uscr_variable_block_begin)(
 
 /*  DOUBLE Level 2/3 insertion routines */
 
-int BLAS_DOUBLE_NAME(uscr_insert_entry)( 
+int BLAS_DOUBLE_NAME(uscr_insert_entry)(
     blas_sparse_matrix A, SPBLAS_DOUBLE_IN val, int i, int j )
 {
   return BLAS_xuscr_insert_entry(A, SPBLAS_TO_DOUBLE_IN( val ), i, j);
 }
 
-int BLAS_DOUBLE_NAME(uscr_insert_entries)( 
-    blas_sparse_matrix A, int nz, 
-    SPBLAS_VECTOR_DOUBLE_IN val, 
+int BLAS_DOUBLE_NAME(uscr_insert_entries)(
+    blas_sparse_matrix A, int nz,
+    SPBLAS_VECTOR_DOUBLE_IN val,
     const int *indx, const int *jndx )
 {
   return BLAS_xuscr_insert_entries(A, nz, SPBLAS_TO_VECTOR_DOUBLE_IN( val ), indx, jndx);
 }
 
-int BLAS_DOUBLE_NAME(uscr_insert_col)( 
-    blas_sparse_matrix A, int j, int nz, 
+int BLAS_DOUBLE_NAME(uscr_insert_col)(
+    blas_sparse_matrix A, int j, int nz,
     SPBLAS_VECTOR_DOUBLE_IN val, const int *indx )
 {
   return BLAS_xuscr_insert_col(A, j, nz, SPBLAS_TO_VECTOR_DOUBLE_IN( val ), indx);
 }
 
-int BLAS_DOUBLE_NAME(uscr_insert_row)( 
+int BLAS_DOUBLE_NAME(uscr_insert_row)(
   blas_sparse_matrix A, int i, int nz,
   SPBLAS_VECTOR_DOUBLE_IN val, const int *indx );
 
-int BLAS_DOUBLE_NAME(uscr_insert_clique)( 
-    blas_sparse_matrix A, 
-    const int k, 
+int BLAS_DOUBLE_NAME(uscr_insert_clique)(
+    blas_sparse_matrix A,
+    const int k,
     const int l,
-    SPBLAS_VECTOR_DOUBLE_IN val, 
+    SPBLAS_VECTOR_DOUBLE_IN val,
     const int row_stride,
-    const int col_stride, 
+    const int col_stride,
     const int *indx,
     const int *jndx );
 
-int BLAS_DOUBLE_NAME(uscr_insert_block)( 
-    blas_sparse_matrix A, 
+int BLAS_DOUBLE_NAME(uscr_insert_block)(
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_DOUBLE_IN val,
-    int row_stride, 
-    int col_stride, 
+    int row_stride,
+    int col_stride,
     int i, int j )
 {
   return BLAS_xuscr_insert_block(
-        A, SPBLAS_TO_VECTOR_DOUBLE_IN( val ), 
+        A, SPBLAS_TO_VECTOR_DOUBLE_IN( val ),
         row_stride, col_stride, i, j);
 }
 
@@ -1913,64 +1916,64 @@ int BLAS_DOUBLE_NAME(uscr_end)(blas_sparse_matrix A)
 
 /*  DOUBLE Level 2/3 computational routines */
 
- int BLAS_DOUBLE_NAME(usmv)(enum 
-    blas_trans_type transa, 
-    SPBLAS_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_DOUBLE_IN x, 
-    int incx, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT y, 
+ int BLAS_DOUBLE_NAME(usmv)(enum
+    blas_trans_type transa,
+    SPBLAS_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_DOUBLE_IN x,
+    int incx,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT y,
     int incy )
 {
   return BLAS_xusmv(
-      transa,   SPBLAS_TO_DOUBLE_IN( alpha ), A, 
-      SPBLAS_TO_VECTOR_DOUBLE_IN( x ), incx, 
+      transa,   SPBLAS_TO_DOUBLE_IN( alpha ), A,
+      SPBLAS_TO_VECTOR_DOUBLE_IN( x ), incx,
       SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( y ), incy);
 }
 
-int BLAS_DOUBLE_NAME(usmm)( 
-    enum blas_order_type order, 
+int BLAS_DOUBLE_NAME(usmm)(
+    enum blas_order_type order,
     enum blas_trans_type transa,
-    int nrhs, 
-    SPBLAS_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
+    int nrhs,
+    SPBLAS_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_DOUBLE_IN b,
-    int ldb, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT c, 
+    int ldb,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT c,
     int ldc )
 {
   return BLAS_xusmm(
-      order, transa, nrhs, 
-      SPBLAS_TO_DOUBLE_IN( alpha), A, 
-      SPBLAS_TO_VECTOR_DOUBLE_IN(b), ldb, 
+      order, transa, nrhs,
+      SPBLAS_TO_DOUBLE_IN( alpha), A,
+      SPBLAS_TO_VECTOR_DOUBLE_IN(b), ldb,
       SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( c ), ldc);
 }
 
-int BLAS_DOUBLE_NAME(ussv)( 
-    enum blas_trans_type transa, 
-    SPBLAS_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT x, 
+int BLAS_DOUBLE_NAME(ussv)(
+    enum blas_trans_type transa,
+    SPBLAS_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT x,
     int incx )
 {
-  return BLAS_xussv( transa, 
-        SPBLAS_TO_DOUBLE_IN( alpha ), A, 
-        SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( x ), 
+  return BLAS_xussv( transa,
+        SPBLAS_TO_DOUBLE_IN( alpha ), A,
+        SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( x ),
         incx);
 }
 
 
-int BLAS_DOUBLE_NAME(ussm)( 
-    enum blas_order_type order, 
+int BLAS_DOUBLE_NAME(ussm)(
+    enum blas_order_type order,
     enum blas_trans_type transt,
-    int nrhs, 
-    SPBLAS_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_DOUBLE_IN_OUT b, 
+    int nrhs,
+    SPBLAS_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_DOUBLE_IN_OUT b,
     int ldb )
 {
-  return BLAS_xussm(order, transt, nrhs, 
-      SPBLAS_TO_DOUBLE_IN( alpha ), A, 
+  return BLAS_xussm(order, transt, nrhs,
+      SPBLAS_TO_DOUBLE_IN( alpha ), A,
       SPBLAS_TO_VECTOR_DOUBLE_IN_OUT( b ), ldb);
 }
 
@@ -1980,73 +1983,73 @@ int BLAS_DOUBLE_NAME(ussm)(
 
 
 
- void BLAS_COMPLEX_DOUBLE_NAME(usdot)( 
-    enum blas_conj_type conj_flag, 
-    int  nz, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x,  
-    const int *index,  
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN y, 
-    int incy, 
-    SPBLAS_COMPLEX_DOUBLE_OUT r, 
+ void BLAS_COMPLEX_DOUBLE_NAME(usdot)(
+    enum blas_conj_type conj_flag,
+    int  nz,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x,
+    const int *index,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN y,
+    int incy,
+    SPBLAS_COMPLEX_DOUBLE_OUT r,
     enum blas_base_type index_base)
 {
-   BLAS_xusdot(conj_flag, nz, 
-          SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ), index, 
-          SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( y ), incy, 
+   BLAS_xusdot(conj_flag, nz,
+          SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ), index,
+          SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( y ), incy,
           SPBLAS_TO_COMPLEX_DOUBLE_OUT( r ), index_base);
 }
 
  void BLAS_COMPLEX_DOUBLE_NAME(usaxpy)(
-    int nz, 
-    SPBLAS_COMPLEX_DOUBLE_IN alpha, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x, 
-    const int *index, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y, 
-    int incy, 
+    int nz,
+    SPBLAS_COMPLEX_DOUBLE_IN alpha,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x,
+    const int *index,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y,
+    int incy,
     enum blas_base_type index_base)
 {
-  BLAS_xusaxpy(nz, SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ), 
-      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ), index, 
-      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( y ), 
+  BLAS_xusaxpy(nz, SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ),
+      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ), index,
+      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( y ),
       incy, index_base);
 }
 
- void BLAS_COMPLEX_DOUBLE_NAME(usga)( 
-    int nz, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN y, 
-    int incy, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT x, 
+ void BLAS_COMPLEX_DOUBLE_NAME(usga)(
+    int nz,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN y,
+    int incy,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusga( nz, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( y ), incy, 
+  BLAS_xusga( nz, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( y ), incy,
         SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( x ), indx, index_base);
 
 }
 
- void BLAS_COMPLEX_DOUBLE_NAME(usgz)( 
-    int nz, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y, 
-    int incy, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_OUT x, 
+ void BLAS_COMPLEX_DOUBLE_NAME(usgz)(
+    int nz,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y,
+    int incy,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusgz(nz, SPBLAS_TO_COMPLEX_DOUBLE_IN_OUT(y ), incy, SPBLAS_TO_COMPLEX_DOUBLE_OUT(  x ), 
+  BLAS_xusgz(nz, SPBLAS_TO_COMPLEX_DOUBLE_IN_OUT(y ), incy, SPBLAS_TO_COMPLEX_DOUBLE_OUT(  x ),
     indx, index_base);
 }
 
 
  void BLAS_COMPLEX_DOUBLE_NAME(ussc)(
-    int nz, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y, 
-    int incy, 
-    const int *index, 
+    int nz,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y,
+    int incy,
+    const int *index,
     enum blas_base_type index_base)
 {
-  BLAS_xussc(nz, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ), 
-  SPBLAS_TO_COMPLEX_DOUBLE_IN_OUT( y ), incy, index, 
+  BLAS_xussc(nz, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ),
+  SPBLAS_TO_COMPLEX_DOUBLE_IN_OUT( y ), incy, index,
   index_base);
 }
 
@@ -2060,7 +2063,7 @@ int BLAS_COMPLEX_DOUBLE_NAME(uscr_begin)(int M, int N)
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_COMPLEX_DOUBLE_NAME(uscr_block_begin)( 
+blas_sparse_matrix BLAS_COMPLEX_DOUBLE_NAME(uscr_block_begin)(
     int Mb, int Nb, int k, int l )
 {
   TSp_mat<COMPLEX_DOUBLE> *A = new TSp_mat<COMPLEX_DOUBLE>(Mb*k, Nb*l);
@@ -2071,10 +2074,10 @@ blas_sparse_matrix BLAS_COMPLEX_DOUBLE_NAME(uscr_block_begin)(
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_COMPLEX_DOUBLE_NAME(uscr_variable_block_begin)( 
+blas_sparse_matrix BLAS_COMPLEX_DOUBLE_NAME(uscr_variable_block_begin)(
     int Mb, int Nb, const int *k, const int *l )
 {
-  TSp_mat<COMPLEX_DOUBLE> *A = new TSp_mat<COMPLEX_DOUBLE>(  
+  TSp_mat<COMPLEX_DOUBLE> *A = new TSp_mat<COMPLEX_DOUBLE>(
                 accumulate(k, k+Mb, 0), accumulate(l, l+Nb, 0) );
 
   TSp_MAT_SET_COMPLEX_DOUBLE(A);
@@ -2086,50 +2089,50 @@ blas_sparse_matrix BLAS_COMPLEX_DOUBLE_NAME(uscr_variable_block_begin)(
 
 /*  COMPLEX_DOUBLE Level 2/3 insertion routines */
 
-int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_entry)( 
+int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_entry)(
     blas_sparse_matrix A, SPBLAS_COMPLEX_DOUBLE_IN val, int i, int j )
 {
   return BLAS_xuscr_insert_entry(A, SPBLAS_TO_COMPLEX_DOUBLE_IN( val ), i, j);
 }
 
-int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_entries)( 
-    blas_sparse_matrix A, int nz, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN val, 
+int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_entries)(
+    blas_sparse_matrix A, int nz,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN val,
     const int *indx, const int *jndx )
 {
   return BLAS_xuscr_insert_entries(A, nz, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( val ), indx, jndx);
 }
 
-int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_col)( 
-    blas_sparse_matrix A, int j, int nz, 
+int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_col)(
+    blas_sparse_matrix A, int j, int nz,
     SPBLAS_VECTOR_COMPLEX_DOUBLE_IN val, const int *indx )
 {
   return BLAS_xuscr_insert_col(A, j, nz, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( val ), indx);
 }
 
-int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_row)( 
+int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_row)(
   blas_sparse_matrix A, int i, int nz,
   SPBLAS_VECTOR_COMPLEX_DOUBLE_IN val, const int *indx );
 
-int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_clique)( 
-    blas_sparse_matrix A, 
-    const int k, 
+int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_clique)(
+    blas_sparse_matrix A,
+    const int k,
     const int l,
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN val, 
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN val,
     const int row_stride,
-    const int col_stride, 
+    const int col_stride,
     const int *indx,
     const int *jndx );
 
-int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_block)( 
-    blas_sparse_matrix A, 
+int BLAS_COMPLEX_DOUBLE_NAME(uscr_insert_block)(
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_COMPLEX_DOUBLE_IN val,
-    int row_stride, 
-    int col_stride, 
+    int row_stride,
+    int col_stride,
     int i, int j )
 {
   return BLAS_xuscr_insert_block(
-        A, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( val ), 
+        A, SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( val ),
         row_stride, col_stride, i, j);
 }
 
@@ -2140,64 +2143,64 @@ int BLAS_COMPLEX_DOUBLE_NAME(uscr_end)(blas_sparse_matrix A)
 
 /*  COMPLEX_DOUBLE Level 2/3 computational routines */
 
- int BLAS_COMPLEX_DOUBLE_NAME(usmv)(enum 
-    blas_trans_type transa, 
-    SPBLAS_COMPLEX_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x, 
-    int incx, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y, 
+ int BLAS_COMPLEX_DOUBLE_NAME(usmv)(enum
+    blas_trans_type transa,
+    SPBLAS_COMPLEX_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN x,
+    int incx,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT y,
     int incy )
 {
   return BLAS_xusmv(
-      transa,   SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ), A, 
-      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ), incx, 
+      transa,   SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ), A,
+      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN( x ), incx,
       SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( y ), incy);
 }
 
-int BLAS_COMPLEX_DOUBLE_NAME(usmm)( 
-    enum blas_order_type order, 
+int BLAS_COMPLEX_DOUBLE_NAME(usmm)(
+    enum blas_order_type order,
     enum blas_trans_type transa,
-    int nrhs, 
-    SPBLAS_COMPLEX_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
+    int nrhs,
+    SPBLAS_COMPLEX_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_COMPLEX_DOUBLE_IN b,
-    int ldb, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT c, 
+    int ldb,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT c,
     int ldc )
 {
   return BLAS_xusmm(
-      order, transa, nrhs, 
-      SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha), A, 
-      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN(b), ldb, 
+      order, transa, nrhs,
+      SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha), A,
+      SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN(b), ldb,
       SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( c ), ldc);
 }
 
-int BLAS_COMPLEX_DOUBLE_NAME(ussv)( 
-    enum blas_trans_type transa, 
-    SPBLAS_COMPLEX_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT x, 
+int BLAS_COMPLEX_DOUBLE_NAME(ussv)(
+    enum blas_trans_type transa,
+    SPBLAS_COMPLEX_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT x,
     int incx )
 {
-  return BLAS_xussv( transa, 
-        SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ), A, 
-        SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( x ), 
+  return BLAS_xussv( transa,
+        SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ), A,
+        SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( x ),
         incx);
 }
 
 
-int BLAS_COMPLEX_DOUBLE_NAME(ussm)( 
-    enum blas_order_type order, 
+int BLAS_COMPLEX_DOUBLE_NAME(ussm)(
+    enum blas_order_type order,
     enum blas_trans_type transt,
-    int nrhs, 
-    SPBLAS_COMPLEX_DOUBLE_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT b, 
+    int nrhs,
+    SPBLAS_COMPLEX_DOUBLE_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_COMPLEX_DOUBLE_IN_OUT b,
     int ldb )
 {
-  return BLAS_xussm(order, transt, nrhs, 
-      SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ), A, 
+  return BLAS_xussm(order, transt, nrhs,
+      SPBLAS_TO_COMPLEX_DOUBLE_IN( alpha ), A,
       SPBLAS_TO_VECTOR_COMPLEX_DOUBLE_IN_OUT( b ), ldb);
 }
 
@@ -2211,73 +2214,73 @@ int BLAS_COMPLEX_DOUBLE_NAME(ussm)(
 /*  ----  double  Level 1 rouintes ----- */
 /*********/
 
- void BLAS_FLOAT_NAME(usdot)( 
-    enum blas_conj_type conj_flag, 
-    int  nz, 
-    SPBLAS_VECTOR_FLOAT_IN x,  
-    const int *index,  
-    SPBLAS_VECTOR_FLOAT_IN y, 
-    int incy, 
-    SPBLAS_FLOAT_OUT r, 
+ void BLAS_FLOAT_NAME(usdot)(
+    enum blas_conj_type conj_flag,
+    int  nz,
+    SPBLAS_VECTOR_FLOAT_IN x,
+    const int *index,
+    SPBLAS_VECTOR_FLOAT_IN y,
+    int incy,
+    SPBLAS_FLOAT_OUT r,
     enum blas_base_type index_base)
 {
-   BLAS_xusdot(conj_flag, nz, 
-          SPBLAS_TO_VECTOR_FLOAT_IN( x ), index, 
-          SPBLAS_TO_VECTOR_FLOAT_IN( y ), incy, 
+   BLAS_xusdot(conj_flag, nz,
+          SPBLAS_TO_VECTOR_FLOAT_IN( x ), index,
+          SPBLAS_TO_VECTOR_FLOAT_IN( y ), incy,
           SPBLAS_TO_FLOAT_OUT( r ), index_base);
 }
 
  void BLAS_FLOAT_NAME(usaxpy)(
-    int nz, 
-    SPBLAS_FLOAT_IN alpha, 
-    SPBLAS_VECTOR_FLOAT_IN x, 
-    const int *index, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT y, 
-    int incy, 
+    int nz,
+    SPBLAS_FLOAT_IN alpha,
+    SPBLAS_VECTOR_FLOAT_IN x,
+    const int *index,
+    SPBLAS_VECTOR_FLOAT_IN_OUT y,
+    int incy,
     enum blas_base_type index_base)
 {
-  BLAS_xusaxpy(nz, SPBLAS_TO_FLOAT_IN( alpha ), 
-      SPBLAS_TO_VECTOR_FLOAT_IN( x ), index, 
-      SPBLAS_TO_VECTOR_FLOAT_IN_OUT( y ), 
+  BLAS_xusaxpy(nz, SPBLAS_TO_FLOAT_IN( alpha ),
+      SPBLAS_TO_VECTOR_FLOAT_IN( x ), index,
+      SPBLAS_TO_VECTOR_FLOAT_IN_OUT( y ),
       incy, index_base);
 }
 
- void BLAS_FLOAT_NAME(usga)( 
-    int nz, 
-    SPBLAS_VECTOR_FLOAT_IN y, 
-    int incy, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT x, 
+ void BLAS_FLOAT_NAME(usga)(
+    int nz,
+    SPBLAS_VECTOR_FLOAT_IN y,
+    int incy,
+    SPBLAS_VECTOR_FLOAT_IN_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusga( nz, SPBLAS_TO_VECTOR_FLOAT_IN( y ), incy, 
+  BLAS_xusga( nz, SPBLAS_TO_VECTOR_FLOAT_IN( y ), incy,
         SPBLAS_TO_VECTOR_FLOAT_IN_OUT( x ), indx, index_base);
 
 }
 
- void BLAS_FLOAT_NAME(usgz)( 
-    int nz, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT y, 
-    int incy, 
-    SPBLAS_VECTOR_FLOAT_OUT x, 
+ void BLAS_FLOAT_NAME(usgz)(
+    int nz,
+    SPBLAS_VECTOR_FLOAT_IN_OUT y,
+    int incy,
+    SPBLAS_VECTOR_FLOAT_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusgz(nz, SPBLAS_TO_FLOAT_IN_OUT(y ), incy, SPBLAS_TO_FLOAT_OUT(  x ), 
+  BLAS_xusgz(nz, SPBLAS_TO_FLOAT_IN_OUT(y ), incy, SPBLAS_TO_FLOAT_OUT(  x ),
     indx, index_base);
 }
 
 
  void BLAS_FLOAT_NAME(ussc)(
-    int nz, 
-    SPBLAS_VECTOR_FLOAT_IN x, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT y, 
-    int incy, 
-    const int *index, 
+    int nz,
+    SPBLAS_VECTOR_FLOAT_IN x,
+    SPBLAS_VECTOR_FLOAT_IN_OUT y,
+    int incy,
+    const int *index,
     enum blas_base_type index_base)
 {
-  BLAS_xussc(nz, SPBLAS_TO_VECTOR_FLOAT_IN( x ), 
-  SPBLAS_TO_FLOAT_IN_OUT( y ), incy, index, 
+  BLAS_xussc(nz, SPBLAS_TO_VECTOR_FLOAT_IN( x ),
+  SPBLAS_TO_FLOAT_IN_OUT( y ), incy, index,
   index_base);
 }
 
@@ -2291,7 +2294,7 @@ int BLAS_FLOAT_NAME(uscr_begin)(int M, int N)
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_FLOAT_NAME(uscr_block_begin)( 
+blas_sparse_matrix BLAS_FLOAT_NAME(uscr_block_begin)(
     int Mb, int Nb, int k, int l )
 {
   TSp_mat<FLOAT> *A = new TSp_mat<FLOAT>(Mb*k, Nb*l);
@@ -2302,10 +2305,10 @@ blas_sparse_matrix BLAS_FLOAT_NAME(uscr_block_begin)(
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_FLOAT_NAME(uscr_variable_block_begin)( 
+blas_sparse_matrix BLAS_FLOAT_NAME(uscr_variable_block_begin)(
     int Mb, int Nb, const int *k, const int *l )
 {
-  TSp_mat<FLOAT> *A = new TSp_mat<FLOAT>(  
+  TSp_mat<FLOAT> *A = new TSp_mat<FLOAT>(
                 accumulate(k, k+Mb, 0), accumulate(l, l+Nb, 0) );
 
   TSp_MAT_SET_FLOAT(A);
@@ -2317,50 +2320,50 @@ blas_sparse_matrix BLAS_FLOAT_NAME(uscr_variable_block_begin)(
 
 /*  FLOAT Level 2/3 insertion routines */
 
-int BLAS_FLOAT_NAME(uscr_insert_entry)( 
+int BLAS_FLOAT_NAME(uscr_insert_entry)(
     blas_sparse_matrix A, SPBLAS_FLOAT_IN val, int i, int j )
 {
   return BLAS_xuscr_insert_entry(A, SPBLAS_TO_FLOAT_IN( val ), i, j);
 }
 
-int BLAS_FLOAT_NAME(uscr_insert_entries)( 
-    blas_sparse_matrix A, int nz, 
-    SPBLAS_VECTOR_FLOAT_IN val, 
+int BLAS_FLOAT_NAME(uscr_insert_entries)(
+    blas_sparse_matrix A, int nz,
+    SPBLAS_VECTOR_FLOAT_IN val,
     const int *indx, const int *jndx )
 {
   return BLAS_xuscr_insert_entries(A, nz, SPBLAS_TO_VECTOR_FLOAT_IN( val ), indx, jndx);
 }
 
-int BLAS_FLOAT_NAME(uscr_insert_col)( 
-    blas_sparse_matrix A, int j, int nz, 
+int BLAS_FLOAT_NAME(uscr_insert_col)(
+    blas_sparse_matrix A, int j, int nz,
     SPBLAS_VECTOR_FLOAT_IN val, const int *indx )
 {
   return BLAS_xuscr_insert_col(A, j, nz, SPBLAS_TO_VECTOR_FLOAT_IN( val ), indx);
 }
 
-int BLAS_FLOAT_NAME(uscr_insert_row)( 
+int BLAS_FLOAT_NAME(uscr_insert_row)(
   blas_sparse_matrix A, int i, int nz,
   SPBLAS_VECTOR_FLOAT_IN val, const int *indx );
 
-int BLAS_FLOAT_NAME(uscr_insert_clique)( 
-    blas_sparse_matrix A, 
-    const int k, 
+int BLAS_FLOAT_NAME(uscr_insert_clique)(
+    blas_sparse_matrix A,
+    const int k,
     const int l,
-    SPBLAS_VECTOR_FLOAT_IN val, 
+    SPBLAS_VECTOR_FLOAT_IN val,
     const int row_stride,
-    const int col_stride, 
+    const int col_stride,
     const int *indx,
     const int *jndx );
 
-int BLAS_FLOAT_NAME(uscr_insert_block)( 
-    blas_sparse_matrix A, 
+int BLAS_FLOAT_NAME(uscr_insert_block)(
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_FLOAT_IN val,
-    int row_stride, 
-    int col_stride, 
+    int row_stride,
+    int col_stride,
     int i, int j )
 {
   return BLAS_xuscr_insert_block(
-        A, SPBLAS_TO_VECTOR_FLOAT_IN( val ), 
+        A, SPBLAS_TO_VECTOR_FLOAT_IN( val ),
         row_stride, col_stride, i, j);
 }
 
@@ -2371,64 +2374,64 @@ int BLAS_FLOAT_NAME(uscr_end)(blas_sparse_matrix A)
 
 /*  FLOAT Level 2/3 computational routines */
 
- int BLAS_FLOAT_NAME(usmv)(enum 
-    blas_trans_type transa, 
-    SPBLAS_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_FLOAT_IN x, 
-    int incx, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT y, 
+ int BLAS_FLOAT_NAME(usmv)(enum
+    blas_trans_type transa,
+    SPBLAS_FLOAT_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_FLOAT_IN x,
+    int incx,
+    SPBLAS_VECTOR_FLOAT_IN_OUT y,
     int incy )
 {
   return BLAS_xusmv(
-      transa,   SPBLAS_TO_FLOAT_IN( alpha ), A, 
-      SPBLAS_TO_VECTOR_FLOAT_IN( x ), incx, 
+      transa,   SPBLAS_TO_FLOAT_IN( alpha ), A,
+      SPBLAS_TO_VECTOR_FLOAT_IN( x ), incx,
       SPBLAS_TO_VECTOR_FLOAT_IN_OUT( y ), incy);
 }
 
-int BLAS_FLOAT_NAME(usmm)( 
-    enum blas_order_type order, 
+int BLAS_FLOAT_NAME(usmm)(
+    enum blas_order_type order,
     enum blas_trans_type transa,
-    int nrhs, 
-    SPBLAS_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
+    int nrhs,
+    SPBLAS_FLOAT_IN alpha,
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_FLOAT_IN b,
-    int ldb, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT c, 
+    int ldb,
+    SPBLAS_VECTOR_FLOAT_IN_OUT c,
     int ldc )
 {
   return BLAS_xusmm(
-      order, transa, nrhs, 
-      SPBLAS_TO_FLOAT_IN( alpha), A, 
-      SPBLAS_TO_VECTOR_FLOAT_IN(b), ldb, 
+      order, transa, nrhs,
+      SPBLAS_TO_FLOAT_IN( alpha), A,
+      SPBLAS_TO_VECTOR_FLOAT_IN(b), ldb,
       SPBLAS_TO_VECTOR_FLOAT_IN_OUT( c ), ldc);
 }
 
-int BLAS_FLOAT_NAME(ussv)( 
-    enum blas_trans_type transa, 
-    SPBLAS_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT x, 
+int BLAS_FLOAT_NAME(ussv)(
+    enum blas_trans_type transa,
+    SPBLAS_FLOAT_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_FLOAT_IN_OUT x,
     int incx )
 {
-  return BLAS_xussv( transa, 
-        SPBLAS_TO_FLOAT_IN( alpha ), A, 
-        SPBLAS_TO_VECTOR_FLOAT_IN_OUT( x ), 
+  return BLAS_xussv( transa,
+        SPBLAS_TO_FLOAT_IN( alpha ), A,
+        SPBLAS_TO_VECTOR_FLOAT_IN_OUT( x ),
         incx);
 }
 
 
-int BLAS_FLOAT_NAME(ussm)( 
-    enum blas_order_type order, 
+int BLAS_FLOAT_NAME(ussm)(
+    enum blas_order_type order,
     enum blas_trans_type transt,
-    int nrhs, 
-    SPBLAS_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_FLOAT_IN_OUT b, 
+    int nrhs,
+    SPBLAS_FLOAT_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_FLOAT_IN_OUT b,
     int ldb )
 {
-  return BLAS_xussm(order, transt, nrhs, 
-      SPBLAS_TO_FLOAT_IN( alpha ), A, 
+  return BLAS_xussm(order, transt, nrhs,
+      SPBLAS_TO_FLOAT_IN( alpha ), A,
       SPBLAS_TO_VECTOR_FLOAT_IN_OUT( b ), ldb);
 }
 
@@ -2438,73 +2441,73 @@ int BLAS_FLOAT_NAME(ussm)(
 
 
 
- void BLAS_COMPLEX_FLOAT_NAME(usdot)( 
-    enum blas_conj_type conj_flag, 
-    int  nz, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x,  
-    const int *index,  
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN y, 
-    int incy, 
-    SPBLAS_COMPLEX_FLOAT_OUT r, 
+ void BLAS_COMPLEX_FLOAT_NAME(usdot)(
+    enum blas_conj_type conj_flag,
+    int  nz,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x,
+    const int *index,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN y,
+    int incy,
+    SPBLAS_COMPLEX_FLOAT_OUT r,
     enum blas_base_type index_base)
 {
-   BLAS_xusdot(conj_flag, nz, 
-          SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ), index, 
-          SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( y ), incy, 
+   BLAS_xusdot(conj_flag, nz,
+          SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ), index,
+          SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( y ), incy,
           SPBLAS_TO_COMPLEX_FLOAT_OUT( r ), index_base);
 }
 
  void BLAS_COMPLEX_FLOAT_NAME(usaxpy)(
-    int nz, 
-    SPBLAS_COMPLEX_FLOAT_IN alpha, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x, 
-    const int *index, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y, 
-    int incy, 
+    int nz,
+    SPBLAS_COMPLEX_FLOAT_IN alpha,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x,
+    const int *index,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y,
+    int incy,
     enum blas_base_type index_base)
 {
-  BLAS_xusaxpy(nz, SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ), 
-      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ), index, 
-      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( y ), 
+  BLAS_xusaxpy(nz, SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ),
+      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ), index,
+      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( y ),
       incy, index_base);
 }
 
- void BLAS_COMPLEX_FLOAT_NAME(usga)( 
-    int nz, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN y, 
-    int incy, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT x, 
+ void BLAS_COMPLEX_FLOAT_NAME(usga)(
+    int nz,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN y,
+    int incy,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusga( nz, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( y ), incy, 
+  BLAS_xusga( nz, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( y ), incy,
         SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( x ), indx, index_base);
 
 }
 
- void BLAS_COMPLEX_FLOAT_NAME(usgz)( 
-    int nz, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y, 
-    int incy, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_OUT x, 
+ void BLAS_COMPLEX_FLOAT_NAME(usgz)(
+    int nz,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y,
+    int incy,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_OUT x,
     const int *indx,
     enum blas_base_type index_base )
 {
-  BLAS_xusgz(nz, SPBLAS_TO_COMPLEX_FLOAT_IN_OUT(y ), incy, SPBLAS_TO_COMPLEX_FLOAT_OUT(  x ), 
+  BLAS_xusgz(nz, SPBLAS_TO_COMPLEX_FLOAT_IN_OUT(y ), incy, SPBLAS_TO_COMPLEX_FLOAT_OUT(  x ),
     indx, index_base);
 }
 
 
  void BLAS_COMPLEX_FLOAT_NAME(ussc)(
-    int nz, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y, 
-    int incy, 
-    const int *index, 
+    int nz,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y,
+    int incy,
+    const int *index,
     enum blas_base_type index_base)
 {
-  BLAS_xussc(nz, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ), 
-  SPBLAS_TO_COMPLEX_FLOAT_IN_OUT( y ), incy, index, 
+  BLAS_xussc(nz, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ),
+  SPBLAS_TO_COMPLEX_FLOAT_IN_OUT( y ), incy, index,
   index_base);
 }
 
@@ -2518,7 +2521,7 @@ int BLAS_COMPLEX_FLOAT_NAME(uscr_begin)(int M, int N)
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_COMPLEX_FLOAT_NAME(uscr_block_begin)( 
+blas_sparse_matrix BLAS_COMPLEX_FLOAT_NAME(uscr_block_begin)(
     int Mb, int Nb, int k, int l )
 {
   TSp_mat<COMPLEX_FLOAT> *A = new TSp_mat<COMPLEX_FLOAT>(Mb*k, Nb*l);
@@ -2529,10 +2532,10 @@ blas_sparse_matrix BLAS_COMPLEX_FLOAT_NAME(uscr_block_begin)(
   return Table_insert(A);
 }
 
-blas_sparse_matrix BLAS_COMPLEX_FLOAT_NAME(uscr_variable_block_begin)( 
+blas_sparse_matrix BLAS_COMPLEX_FLOAT_NAME(uscr_variable_block_begin)(
     int Mb, int Nb, const int *k, const int *l )
 {
-  TSp_mat<COMPLEX_FLOAT> *A = new TSp_mat<COMPLEX_FLOAT>(  
+  TSp_mat<COMPLEX_FLOAT> *A = new TSp_mat<COMPLEX_FLOAT>(
                 accumulate(k, k+Mb, 0), accumulate(l, l+Nb, 0) );
 
   TSp_MAT_SET_COMPLEX_FLOAT(A);
@@ -2544,50 +2547,50 @@ blas_sparse_matrix BLAS_COMPLEX_FLOAT_NAME(uscr_variable_block_begin)(
 
 /*  COMPLEX_FLOAT Level 2/3 insertion routines */
 
-int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_entry)( 
+int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_entry)(
     blas_sparse_matrix A, SPBLAS_COMPLEX_FLOAT_IN val, int i, int j )
 {
   return BLAS_xuscr_insert_entry(A, SPBLAS_TO_COMPLEX_FLOAT_IN( val ), i, j);
 }
 
-int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_entries)( 
-    blas_sparse_matrix A, int nz, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN val, 
+int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_entries)(
+    blas_sparse_matrix A, int nz,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN val,
     const int *indx, const int *jndx )
 {
   return BLAS_xuscr_insert_entries(A, nz, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( val ), indx, jndx);
 }
 
-int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_col)( 
-    blas_sparse_matrix A, int j, int nz, 
+int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_col)(
+    blas_sparse_matrix A, int j, int nz,
     SPBLAS_VECTOR_COMPLEX_FLOAT_IN val, const int *indx )
 {
   return BLAS_xuscr_insert_col(A, j, nz, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( val ), indx);
 }
 
-int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_row)( 
+int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_row)(
   blas_sparse_matrix A, int i, int nz,
   SPBLAS_VECTOR_COMPLEX_FLOAT_IN val, const int *indx );
 
-int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_clique)( 
-    blas_sparse_matrix A, 
-    const int k, 
+int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_clique)(
+    blas_sparse_matrix A,
+    const int k,
     const int l,
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN val, 
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN val,
     const int row_stride,
-    const int col_stride, 
+    const int col_stride,
     const int *indx,
     const int *jndx );
 
-int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_block)( 
-    blas_sparse_matrix A, 
+int BLAS_COMPLEX_FLOAT_NAME(uscr_insert_block)(
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_COMPLEX_FLOAT_IN val,
-    int row_stride, 
-    int col_stride, 
+    int row_stride,
+    int col_stride,
     int i, int j )
 {
   return BLAS_xuscr_insert_block(
-        A, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( val ), 
+        A, SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( val ),
         row_stride, col_stride, i, j);
 }
 
@@ -2598,64 +2601,64 @@ int BLAS_COMPLEX_FLOAT_NAME(uscr_end)(blas_sparse_matrix A)
 
 /*  COMPLEX_FLOAT Level 2/3 computational routines */
 
- int BLAS_COMPLEX_FLOAT_NAME(usmv)(enum 
-    blas_trans_type transa, 
-    SPBLAS_COMPLEX_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x, 
-    int incx, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y, 
+ int BLAS_COMPLEX_FLOAT_NAME(usmv)(enum
+    blas_trans_type transa,
+    SPBLAS_COMPLEX_FLOAT_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN x,
+    int incx,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT y,
     int incy )
 {
   return BLAS_xusmv(
-      transa,   SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ), A, 
-      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ), incx, 
+      transa,   SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ), A,
+      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN( x ), incx,
       SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( y ), incy);
 }
 
-int BLAS_COMPLEX_FLOAT_NAME(usmm)( 
-    enum blas_order_type order, 
+int BLAS_COMPLEX_FLOAT_NAME(usmm)(
+    enum blas_order_type order,
     enum blas_trans_type transa,
-    int nrhs, 
-    SPBLAS_COMPLEX_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
+    int nrhs,
+    SPBLAS_COMPLEX_FLOAT_IN alpha,
+    blas_sparse_matrix A,
     SPBLAS_VECTOR_COMPLEX_FLOAT_IN b,
-    int ldb, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT c, 
+    int ldb,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT c,
     int ldc )
 {
   return BLAS_xusmm(
-      order, transa, nrhs, 
-      SPBLAS_TO_COMPLEX_FLOAT_IN( alpha), A, 
-      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN(b), ldb, 
+      order, transa, nrhs,
+      SPBLAS_TO_COMPLEX_FLOAT_IN( alpha), A,
+      SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN(b), ldb,
       SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( c ), ldc);
 }
 
-int BLAS_COMPLEX_FLOAT_NAME(ussv)( 
-    enum blas_trans_type transa, 
-    SPBLAS_COMPLEX_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT x, 
+int BLAS_COMPLEX_FLOAT_NAME(ussv)(
+    enum blas_trans_type transa,
+    SPBLAS_COMPLEX_FLOAT_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT x,
     int incx )
 {
-  return BLAS_xussv( transa, 
-        SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ), A, 
-        SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( x ), 
+  return BLAS_xussv( transa,
+        SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ), A,
+        SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( x ),
         incx);
 }
 
 
-int BLAS_COMPLEX_FLOAT_NAME(ussm)( 
-    enum blas_order_type order, 
+int BLAS_COMPLEX_FLOAT_NAME(ussm)(
+    enum blas_order_type order,
     enum blas_trans_type transt,
-    int nrhs, 
-    SPBLAS_COMPLEX_FLOAT_IN alpha, 
-    blas_sparse_matrix A, 
-    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT b, 
+    int nrhs,
+    SPBLAS_COMPLEX_FLOAT_IN alpha,
+    blas_sparse_matrix A,
+    SPBLAS_VECTOR_COMPLEX_FLOAT_IN_OUT b,
     int ldb )
 {
-  return BLAS_xussm(order, transt, nrhs, 
-      SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ), A, 
+  return BLAS_xussm(order, transt, nrhs,
+      SPBLAS_TO_COMPLEX_FLOAT_IN( alpha ), A,
       SPBLAS_TO_VECTOR_COMPLEX_FLOAT_IN_OUT( b ), ldb);
 }
 
@@ -2683,7 +2686,7 @@ template <class T>
 inline void xcolmeans(blas_sparse_matrix A, T *means)
 {
    TSp_mat<T> *const Ap = ((TSp_mat<T> *) Table[A]);
-   
+
    memset(means, 0, Ap->num_cols() * sizeof(T));
    Ap->colmeans(means);
 }
@@ -2692,7 +2695,7 @@ template <class T>
 inline void xcolvars(blas_sparse_matrix A, T *vars)
 {
    TSp_mat<T> *const Ap = ((TSp_mat<T> *) Table[A]);
-   
+
    memset(vars, 0, Ap->num_cols() * sizeof(T));
    Ap->colvars(vars);
 }
@@ -2701,7 +2704,7 @@ template <class T>
 inline void xrowmeans(blas_sparse_matrix A, T *means)
 {
    TSp_mat<T> *const Ap = ((TSp_mat<T> *) Table[A]);
-   
+
    memset(means, 0, Ap->num_rows() * sizeof(T));
    Ap->rowmeans(means);
 }
@@ -2710,7 +2713,7 @@ template <class T>
 inline void xrowvars(blas_sparse_matrix A, T *vars)
 {
    TSp_mat<T> *const Ap = ((TSp_mat<T> *) Table[A]);
-   
+
    memset(vars, 0, Ap->num_rows() * sizeof(T));
    Ap->rowvars(vars);
 }
@@ -2747,24 +2750,24 @@ inline T *xgetelementp( blas_sparse_matrix A, int row, int col)
 
 
 template<class T>
-inline void xusgemm(enum blas_side_type sidea, enum blas_trans_type transa, enum blas_trans_type transb, 
+inline void xusgemm(enum blas_side_type sidea, enum blas_trans_type transa, enum blas_trans_type transb,
    int nohs, const T &alpha, blas_sparse_matrix A, const T *B, int ldB, const T &beta, T *C, int ldC)
 {
    ((TSp_mat<T>*) Table[A])->usgemm(sidea, transa, transb, nohs, alpha, B, ldB, beta, C, ldC);
 }
 
 template<class T>
-inline void xusgemma(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb, 
+inline void xusgemma(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb,
    int nrhs, const T &alpha, blas_sparse_matrix A, const T *B, int ldB, const T &beta, T *C, int ldC)
 {
    ((TSp_mat<T>*) Table[A])->usgemma(order, transa, transb, nrhs, alpha, B, ldB, beta, C, ldC);
 }
 
 template<class T>
-inline int xusgemmb(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb, 
+inline int xusgemmb(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb,
    int nlhs, const T &alpha, const T *A, int ldA, blas_sparse_matrix B, const T &beta, T *C, int ldC)
 {
-   ((TSp_mat<T>*) Table[B])->usgemmb(order, transa, transb, nlhs, alpha, A, ldA, beta, C, ldC);
+   return ((TSp_mat<T>*) Table[B])->usgemmb(order, transa, transb, nlhs, alpha, A, ldA, beta, C, ldC);
 }
 
 void scolmeans(spmat_t A, float *means)
@@ -2823,7 +2826,7 @@ void ssetelement( spmat_t A, int row, int col, float val )
 void ssetelement( spmat_t A, int idx, float val )
 {
    TSp_mat<float> *Ap = ((TSp_mat<float>*) Table[(blas_sparse_matrix) A]);
-   
+
    xsetelement<float>((blas_sparse_matrix) A, idx / Ap->num_cols(), idx % Ap->num_cols(), val);
 }
 
@@ -2835,7 +2838,7 @@ float &sgetelement( spmat_t A, int row, int col)
 float &sgetelement( spmat_t A, int idx )
 {
    TSp_mat<float> *Ap = ((TSp_mat<float>*) Table[(blas_sparse_matrix) A]);
-   
+
    return xgetelement<float>((blas_sparse_matrix) A, idx / Ap->num_cols(), idx % Ap->num_cols());
 }
 
@@ -2847,7 +2850,7 @@ float *sgetelementp( spmat_t A, int row, int col)
 float *sgetelementp( spmat_t A, int idx )
 {
    TSp_mat<float> *Ap = ((TSp_mat<float>*) Table[(blas_sparse_matrix) A]);
-   
+
    return xgetelementp<float>((blas_sparse_matrix) A, idx / Ap->num_cols(), idx % Ap->num_cols());
 }
 
@@ -2865,8 +2868,8 @@ inline enum blas_trans_type trans2nist(char t)
    case 'C':
       return blas_conj_trans;
    default:
-      bool valid_trans_char = false;
-      assert(valid_trans_char);
+      //bool valid_trans_char = false;
+      //assert(valid_trans_char);
       return blas_no_trans; /* for compiler satisfaction */
    }
 }
@@ -2882,28 +2885,28 @@ inline enum blas_side_type side2nist(char s)
    case 'R':
       return blas_right_side;
    default:
-      bool valid_side_char = false;
-      assert(valid_side_char);
+      //bool valid_side_char = false;
+      //assert(valid_side_char);
       return blas_left_side; /* for compiler satisfaction */
    }
 }
 
-void susgemm(char sidea, char transa, char transb, int nohs, const float &alpha, spmat_t A, 
+void susgemm(char sidea, char transa, char transb, int nohs, const float &alpha, spmat_t A,
    const float *B, int ldB, const float &beta, float *C, int ldC)
 {
-   xusgemm(side2nist(sidea), trans2nist(transa), trans2nist(transb), nohs, 
+   xusgemm(side2nist(sidea), trans2nist(transa), trans2nist(transb), nohs,
       alpha, (blas_sparse_matrix) A, B, ldB, beta, C, ldC);
 }
 
-void susgemma(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb, 
-   int nrhs, const float &alpha, blas_sparse_matrix A, const float *B, int ldB, const float &beta, 
+void susgemma(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb,
+   int nrhs, const float &alpha, blas_sparse_matrix A, const float *B, int ldB, const float &beta,
    float *C, int ldC)
 {
    xusgemma(order, transa, transb, nrhs, alpha, A, B, ldB, beta, C, ldC);
 }
 
-void susgemmb(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb, 
-   int nlhs, const float &alpha, const float *A, int ldA, blas_sparse_matrix B, const float &beta, 
+void susgemmb(enum blas_order_type order, enum blas_trans_type transa, enum blas_trans_type transb,
+   int nlhs, const float &alpha, const float *A, int ldA, blas_sparse_matrix B, const float &beta,
    float *C, int ldC)
 {
    xusgemmb(order, transa, transb, nlhs, alpha, A, ldA, B, beta, C, ldC);
@@ -2950,19 +2953,19 @@ class MklCsrMatrix
 protected:
    int m; /* number of rows */
    int n; /* number of cols */
-   
+
    /* three vectors implement the CSR format */
    vector<float> val; /* non-zero values in rowmajor */
    vector<int>   col; /* col[i] is the column index of val[i] */
    vector<int>   ptr; /* [ptr[i], ptr[i+1]) is the index range for row i, ptr has size m+1,
                        * ptr[0] is always 0, ptr[m] is the number of non-zero values in the matrix */
-   
+
    static char *mdescr(void)
    {
       static char c[6] = {'g', 'l', 'n', 'c', 'x', 'x'};
       return c;
    }
-   
+
    static char trans_inv(char t)
    {
       switch (t)
@@ -2970,11 +2973,11 @@ protected:
       case 't':
       case 'T':
          return 'n';
-      
+
       case 'n':
       case 'N':
          return 't';
-      
+
       default:
          throw runtime_error("transposition param not supported");
          return t;
@@ -2985,39 +2988,39 @@ public:
    MklCsrMatrix(MklCsrMatrix &copy) : m(copy.m), n(copy.n), val(copy.val), col(copy.col), ptr(copy.ptr) {}
    MklCsrMatrix() : m(0), n(0), val(vector<float>()), col(vector<int>()), ptr(vector<int>()) {}
    MklCsrMatrix(int m, int n) : m(m), n(n), val(0), col(0), ptr(m + 1) {}
-   MklCsrMatrix(int m, int n, const float *val, const int *col, const int *ptr) 
+   MklCsrMatrix(int m, int n, const float *val, const int *col, const int *ptr)
       : m(m), n(n), val(val, val + ptr[m]), col(col, col + ptr[m]), ptr(ptr, ptr + m + 1) {}
-   MklCsrMatrix(int ncol, 
-      vector<float>::const_iterator val_begin, vector<float>::const_iterator val_end, 
-      vector<int>::const_iterator col_begin, vector<int>::const_iterator col_end, 
+   MklCsrMatrix(int ncol,
+      vector<float>::const_iterator val_begin, vector<float>::const_iterator val_end,
+      vector<int>::const_iterator col_begin, vector<int>::const_iterator col_end,
       vector<int>::const_iterator ptr_begin, vector<int>::const_iterator ptr_end)
-      : m(ptr_end - ptr_begin - 1), n(ncol), val(val_begin, val_end), col(col_begin, col_end), 
+      : m(ptr_end - ptr_begin - 1), n(ncol), val(val_begin, val_end), col(col_begin, col_end),
       ptr(ptr_begin, ptr_end)
    {
       const int offset = ptr[0];
-      
+
       if (offset > 0)
          for (typename vector<int>::iterator p = ptr.begin(); p < ptr.end(); p++)
             *p -= offset;
    }
-   
+
    int rows() const { return m; }
    int cols() const { return n; }
-   
-   void mml(char transa, char transb, int nrhs, float alpha, const float *b, int ldb, float beta, 
-      float *c, int ldc) const 
+
+   void mml(char transa, char transb, int nrhs, float alpha, const float *b, int ldb, float beta,
+      float *c, int ldc) const
    {
       /* need to const_cast some args since they are not declared const in the MKL interface */
-      
+
       if (transb == 'n' || transb == 'N')
       {
          cerr << "simple mkl_scsrmm" << endl;
          cerr << transa << " " << m << " " << nrhs << " " << n << " " << alpha << " " << MklCsrMatrix::mdescr()
             << " " << "val, col, ptr0, ptr1, " << b << " " << ldb << " " << beta
             << " " << c << " " << ldc << endl;
-         mkl_scsrmm(&transa, const_cast<int *>(&m), &nrhs, const_cast<int *>(&n), &alpha, 
-            MklCsrMatrix::mdescr(), const_cast<float *>(&val[0]), const_cast<int *>(&col[0]), 
-            const_cast<int *>(&ptr[0]), const_cast<int *>(&ptr[1]), const_cast<float *>(b), &ldb, 
+         mkl_scsrmm(&transa, const_cast<int *>(&m), &nrhs, const_cast<int *>(&n), &alpha,
+            MklCsrMatrix::mdescr(), const_cast<float *>(&val[0]), const_cast<int *>(&col[0]),
+            const_cast<int *>(&ptr[0]), const_cast<int *>(&ptr[1]), const_cast<float *>(b), &ldb,
             &beta, c, &ldc);
          cerr << "done" << endl;
       }
@@ -3025,13 +3028,13 @@ public:
       {
          const int middle_dim = (transa == 't' || transa == 'T' ? m : n);
          float *tb = new float[middle_dim * nrhs];
-         
+
          //mkl_somatcopy('r', 't', nrhs, middle_dim, 1.f, const_cast<float *>(b), ldb, tb, nrhs);
          mkl_somatcopy('c', 't', nrhs, middle_dim, 1.f, const_cast<float *>(b), nrhs, tb, ldb);
-         mkl_scsrmm(&transa, const_cast<int *>(&m), &nrhs, const_cast<int *>(&n), &alpha, 
-            MklCsrMatrix::mdescr(), const_cast<float *>(&val[0]), const_cast<int *>(&col[0]), 
+         mkl_scsrmm(&transa, const_cast<int *>(&m), &nrhs, const_cast<int *>(&n), &alpha,
+            MklCsrMatrix::mdescr(), const_cast<float *>(&val[0]), const_cast<int *>(&col[0]),
             const_cast<int *>(&ptr[0]), const_cast<int *>(&ptr[1]), tb, &nrhs, &beta, c, &ldc);
-         
+
          delete[] tb;
       }
       else
@@ -3039,39 +3042,39 @@ public:
          throw runtime_error("transposition param not supported");
       }
    }
-   
-   void mml_vec(char transa, char transb, int nrhs, float alpha, const float *b, int ldb, float beta, 
+
+   void mml_vec(char transa, char transb, int nrhs, float alpha, const float *b, int ldb, float beta,
       float *c, int ldc)
    {
-      /* Compute A * B = C by A * b = c, where b and c are col-vectors of B and C, respectively. 
-       * The transposition of A is handled by the underlying routine. In case of A * B^T = C, we 
+      /* Compute A * B = C by A * b = c, where b and c are col-vectors of B and C, respectively.
+       * The transposition of A is handled by the underlying routine. In case of A * B^T = C, we
        * need to do the same but with B's row vectors. */
-      
+
       const int nlhs = (transa == 't' || transa == 'T' ? n : m);
       float *ccol = new float[nlhs];
-      
+
       if (transb == 'n' || transb == 'N')
       {
          const int middle_dim = (transa == 't' || transa == 'T' ? m : n);
          float *bcol = new float[middle_dim];
-         
+
          for (int i = 0; i < nrhs; i++)
          {
             for (int j = 0; j < middle_dim; j++)
                bcol[j] = b[j * ldb + i];
-            
+
             if (beta != 0.f)
                for (int j = 0; j < nlhs; j++)
                   ccol[j] = c[j * ldc + i];
-            
-            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(), 
-               &val[0], &col[0], &ptr[0], &ptr[1], 
+
+            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(),
+               &val[0], &col[0], &ptr[0], &ptr[1],
                bcol, &beta, ccol);
-            
+
             for (int j = 0; j < nlhs; j++)
                c[j * ldc + i] = ccol[j];
          }
-         
+
          delete[] bcol;
       }
       else if (transb == 't' || transb == 'T')
@@ -3081,11 +3084,11 @@ public:
             if (beta != 0.f)
                for (int j = 0; j < nlhs; j++)
                   ccol[j] = c[j * ldc + i];
-            
-            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(), 
-               &val[0], &col[0], &ptr[0], &ptr[1], 
+
+            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(),
+               &val[0], &col[0], &ptr[0], &ptr[1],
                const_cast<float *>(&b[i * ldb]), &beta, ccol);
-            
+
             for (int j = 0; j < nlhs; j++)
                c[j * ldc + i] = ccol[j];
          }
@@ -3094,26 +3097,26 @@ public:
       {
          throw runtime_error("transposition param not supported");
       }
-      
+
       delete[] ccol;
    }
-   
-   void mmr_vec(char transa, char transb, int nlhs, float alpha, const float *b, int ldb, float beta, 
+
+   void mmr_vec(char transa, char transb, int nlhs, float alpha, const float *b, int ldb, float beta,
       float *c, int ldc)
    {
-      /* Compute B * A = C by b * A = c, where b and c are row-vectors of B and C, respectively. 
-       * This equals A^T * b^T = c^T, where the transposition matters only for A and is performed 
-       * by the underlying routine. In case of B^T * A = C, we need to do the same but with B's 
+      /* Compute B * A = C by b * A = c, where b and c are row-vectors of B and C, respectively.
+       * This equals A^T * b^T = c^T, where the transposition matters only for A and is performed
+       * by the underlying routine. In case of B^T * A = C, we need to do the same but with B's
        * column vectors. */
-      
+
       transa = trans_inv(transa);
-      
+
       if (transb == 'n' || transb == 'N')
       {
          for (int i = 0; i < nlhs; i++)
          {
-            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(), 
-               &val[0], &col[0], &ptr[0], &ptr[1], 
+            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(),
+               &val[0], &col[0], &ptr[0], &ptr[1],
                const_cast<float *>(&b[i * ldb]), &beta, const_cast<float *>(&c[i * ldc]));
          }
       }
@@ -3121,17 +3124,17 @@ public:
       {
          const int middle_dim = (transa == 't' || transa == 'T' ? m : n);
          float *bcol = new float[middle_dim];
-         
+
          for (int i = 0; i < nlhs; i++)
          {
             for (int j = 0; j < middle_dim; j++)
                bcol[j] = b[j * ldb + i];
-            
-            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(), 
-               &val[0], &col[0], &ptr[0], &ptr[1], 
+
+            mkl_scsrmv(&transa, &m, &n, &alpha, MklCsrMatrix::mdescr(),
+               &val[0], &col[0], &ptr[0], &ptr[1],
                bcol, &beta, const_cast<float *>(&c[i * ldc]));
          }
-         
+
          delete[] bcol;
       }
       else
@@ -3139,17 +3142,17 @@ public:
          throw runtime_error("transposition param not supported");
       }
    }
-   
-   void mmr_tra(char transa, char transb, int nlhs, float alpha, const float *b, int ldb, float beta, 
+
+   void mmr_tra(char transa, char transb, int nlhs, float alpha, const float *b, int ldb, float beta,
       float *c, int ldc)
    {
       /* Compute B * A = C by A^T * B^T = C^T, which has the form nrhs x middle_dim x nlhs */
       transa = trans_inv(transa);
       transb = trans_inv(transb);
-      
+
       float *_b;
       int _ldb;
-      
+
       if (transb == 't' || transb == 'T')
       {
          const int middle_dim = (transa == 't' || transa == 'T' ? m : n);
@@ -3162,47 +3165,47 @@ public:
          _b = const_cast<float *>(b);
          _ldb = ldb;
       }
-      
+
       const int nrhs = (transa == 't' || transa == 'T' ? n : m);
       float *_c = new float[nlhs * nrhs];
-      
+
       if (beta != 0.f)
       {
          mkl_somatcopy('r', 't', nlhs, nrhs, 1.f, c, ldc, _c, nlhs);
       }
-      
-      mkl_scsrmm(&transa, &m, &nlhs, &n, &alpha, 
-         MklCsrMatrix::mdescr(), &val[0], &col[0], 
+
+      mkl_scsrmm(&transa, &m, &nlhs, &n, &alpha,
+         MklCsrMatrix::mdescr(), &val[0], &col[0],
          &ptr[0], &ptr[1], _b, &_ldb, &beta, _c, &nlhs);
-      
+
       mkl_somatcopy('r', 't', nrhs, nlhs, 1.f, _c, nlhs, c, ldc);
-      
+
       if (_b != b)
          delete[] _b;
-      
+
       delete[] _c;
    }
-   
-   void colmeans(float *means) const 
+
+   void colmeans(float *means) const
    {
       memset(means, 0, n * sizeof(float));
-      
+
       for (int i = 0; i < m; i++)
          for (int j = ptr[i]; j < ptr[i+1]; j++)
             means[col[j]] += val[j];
-      
+
       for (int j = 0; j < n; j++)
          means[j] /= m;
    }
-   
-   void colvars(float *vars) const 
+
+   void colvars(float *vars) const
    {
       vector<float> means(n);
       vector<int>   nnz(n);
-      
+
       memset(vars, 0, n * sizeof(float));
       colmeans(&means[0]);
-      
+
       for (int i = 0; i < m; i++)
          for (int j = ptr[i]; j < ptr[i+1]; j++)
          {
@@ -3210,36 +3213,36 @@ public:
             vars[col[j]] += x * x;
             nnz[col[j]]++;
          }
-      
+
       for (int j = 0; j < n; j++)
       {
          vars[j] += means[j] * means[j] * (m - nnz[j]);
          vars[j] /= m;
       }
    }
-   
-   MklCsrMatrix *rowsubset(int first_row, int nrows) const 
+
+   MklCsrMatrix *rowsubset(int first_row, int nrows) const
    {
-      return new MklCsrMatrix(n, 
-         val.begin() + ptr[first_row], val.begin() + ptr[first_row + nrows], 
-         col.begin() + ptr[first_row], col.begin() + ptr[first_row + nrows], 
+      return new MklCsrMatrix(n,
+         val.begin() + ptr[first_row], val.begin() + ptr[first_row + nrows],
+         col.begin() + ptr[first_row], col.begin() + ptr[first_row + nrows],
          ptr.begin() + first_row, ptr.begin() + first_row + nrows + 1);
    }
-   
+
    void setelement(int r, int c, float v)
    {
       int j;
-      
+
       for (j = ptr[r]; j < ptr[r+1] && col[j] < c; j++) /* adjust j to point to A[r,c] */
          ;
-         
+
       if (v == 0.f) /* set to zero */
       {
          if (j < ptr[r+1] && col[j] == c) /* non-zero entry affected, delete */
          {
             val.erase(val.begin() + j);
             col.erase(col.begin() + j);
-            
+
             for (typename vector<int>::iterator p = ptr.begin() + r + 1; p < ptr.end(); p++)
                (*p)--;
          }
@@ -3254,34 +3257,34 @@ public:
          {
             val.insert(val.begin() + j, v);
             col.insert(col.begin() + j, c);
-            
+
             for (int *p = &ptr[r+1]; p <= &ptr[m]; p++)
                (*p)++;
          }
       }
    }
-   
+
    /* get pointer to element if allocated, NULL otherwise */
-   float *getelementp(int r, int c) 
+   float *getelementp(int r, int c)
    {
       int j;
-      
+
       for (j = ptr[r]; j < ptr[r+1] && col[j] < c; j++) /* adjust j to point to A[r,c] */
          ;
-      
+
       if (j < ptr[r+1] && col[j] == c) /* non-zero entry affected, assign */
          return &val[j];
-      
+
       return NULL;
    }
-   
+
    float &getelement(int r, int c)
    {
       int j;
-      
+
       for (j = ptr[r]; j < ptr[r+1] && col[j] < c; j++) /* adjust j to point to A[r,c] */
          ;
-      
+
       if (j < ptr[r+1] && col[j] == c) /* non-zero entry affected */
       {
          return val[j];
@@ -3290,72 +3293,72 @@ public:
       {
          val.insert(val.begin() + j, 0.f);
          col.insert(col.begin() + j, c);
-         
+
          for (typename vector<int>::iterator p = ptr.begin() + r + 1; p < ptr.end(); p++)
             (*p)++;
-         
+
          return val[j];
       }
    }
-   
+
    void scalecols(const float *s)
    {
       for (int i = 0; i < m; i++)
          for (int j = ptr[i]; j < ptr[i+1]; j++)
             val[j] *= s[col[j]];
    }
-   
+
    void scalerows(const float *s)
    {
       for (int i = 0; i < m; i++)
          for (int j = ptr[i]; j < ptr[i+1]; j++)
             val[j] *= s[i];
    }
-   
+
    void print() const /* debug */
    {
       printf("MklCsrMatrix of dim %dx%d", m, n);
-      
+
       printf("\nval: ");
-      
+
       for (int i = 0; i < ptr[m]; i++)
          printf("%5.3f ", val[i]);
-      
+
       printf("\ncol: ");
-      
+
       for (int i = 0; i < ptr[m]; i++)
          printf("%d ", col[i]);
-      
+
       printf("\nptr: ");
-      
+
       for (int i = 0; i < m+1; i++)
          printf("%d ", ptr[i]);
-      
+
       printf("\n");
-      
+
       /*for (int i = 0; i < m; i++)
       {
          int idx = -1;
-         
+
          for (int j = 0; j < (ptr[i+1] - ptr[i]); j++)
          {
             idx = ptr[i] + j;
-            
+
             for (int k = (j == 0 ? 0 : col[idx-1] + 1); k < col[idx]; k++)
                printf("   .   ");
-            
+
             printf("%5.3f ", val[idx]);
          }
-         
+
          for (int k = (idx == -1 ? 0 : col[idx] + 1); k < n; k++)
             printf("   .   ");
-         
+
          printf("\n");
       }*/
    }
 };
 
-/* Store allocated matrices in a map using int keys as handles, the bitset keys keeps track of 
+/* Store allocated matrices in a map using int keys as handles, the bitset keys keeps track of
  * (de-) allocated keys. */
 static map<int, MklCsrMatrix *> table;
 static bitset<1024> keys;
@@ -3364,17 +3367,17 @@ static bitset<1024> keys;
 static inline MklCsrMatrix *getMatPtr(int key)
 {
    typename map<int, MklCsrMatrix *>::iterator i = table.find(key);
-   
+
    return (i == table.end() ? NULL : i->second);
 }
 
 static inline MklCsrMatrix *getMat(int key)
 {
    MklCsrMatrix *p = getMatPtr(key);
-   
+
    if (p == NULL)
       throw runtime_error("MKL CSR Matrix key invalid");
-   
+
    return p;
 }
 
@@ -3382,12 +3385,12 @@ static inline int getKey()
 {
    if (keys.count() == keys.size())
       throw runtime_error("key allocation error");
-   
-   int i = 0; 
-   
+
+   int i = 0;
+
    while (keys[i]) /* no need to check range, there is at least one 0-bit */
       i++;
-   
+
    keys.set(i);
    return i;
 }
@@ -3396,7 +3399,7 @@ static inline void putKey(int i)
 {
    if (i < 0 || i >= keys.size())
       throw runtime_error("attempt to put back invalid key");
-   
+
    keys.reset(i);
 }
 
@@ -3440,7 +3443,7 @@ void sscalerows(spmat_t A, float *s)
 spmat_t srowsubset(spmat_t A, int first_row, int nrow)
 {
    spmat_t B = getKey();
-   
+
    cerr << "srowsubset(A=" <<  A << ", first_row=" << first_row << ", nrow=" << nrow << ")" << endl;
    table.insert(make_pair(B, getMat(A)->rowsubset(first_row, nrow)));
    return B;
@@ -3450,7 +3453,7 @@ spmat_t srowsubset(spmat_t A, int first_row, int nrow)
 spmat_t suscr_csr(int m, int n, float *val, int *col, int *ptr)
 {
    spmat_t A = getKey();
-   
+
    cerr << "suscr_csr(m=" << m << ", n=" << n << ", val, col, ptr)" << endl;
    table.insert(make_pair(A, new MklCsrMatrix(m, n, val, col, ptr)));
    return A;
@@ -3459,7 +3462,7 @@ spmat_t suscr_csr(int m, int n, float *val, int *col, int *ptr)
 spmat_t create(int row, int col)
 {
    spmat_t A = getKey();
-   
+
    cerr << "create" << endl;
    table.insert(make_pair(A, new MklCsrMatrix(row, col)));
    return A;
@@ -3468,12 +3471,12 @@ spmat_t create(int row, int col)
 void destroy(spmat_t A)
 {
    typename map<int, MklCsrMatrix *>::iterator i = table.find(A);
-   
+
    if (i == table.end())
       throw runtime_error("MKL CSR Matrix key invalid");
-   
+
    cerr << "destroy(A=" << A << ")" << endl;
-   
+
    delete i->second;
    putKey(i->first);
    table.erase(i);
@@ -3489,7 +3492,7 @@ void ssetelement( spmat_t A, int row, int col, float val )
 void ssetelement( spmat_t A, int idx, float val )
 {
    MklCsrMatrix *Ap = getMat(A);
-   
+
    cerr << "ssetelement(A=" << A << ", idx=" << idx << ")" << endl;
    Ap->setelement(idx / Ap->cols(), idx % Ap->cols(), val);
 }
@@ -3517,7 +3520,7 @@ float *sgetelementp( spmat_t A, int row, int col )
 float *sgetelementp( spmat_t A, int idx )
 {
    MklCsrMatrix *Ap = getMat(A);
-   
+
    cerr << "sgetelementp(A=" << A << ", idx=" << idx << ")" << endl;
    return Ap->getelementp(idx / Ap->cols(), idx % Ap->cols());
 }
@@ -3526,15 +3529,15 @@ float *sgetelementp( spmat_t A, int idx )
 #include <ctime> /* for clock */
 
 /* sgemm routines with sparse matrix being lhs (A) or rhs (B) of the product */
-void susgemm(char sidea, char transa, char transb, int nohs, const float &alpha, spmat_t A, 
+void susgemm(char sidea, char transa, char transb, int nohs, const float &alpha, spmat_t A,
    const float *B, int ldB, const float &beta, float *C, int ldC)
 {
-   cerr << "susgemm(sidea=" << sidea << ", transa=" << transa << ", transb=" << transb 
-      << ", nohs=" << nohs << ", alpha=" << alpha 
+   cerr << "susgemm(sidea=" << sidea << ", transa=" << transa << ", transb=" << transb
+      << ", nohs=" << nohs << ", alpha=" << alpha
       << ", A=" << A << " (" << getMat(A)->rows() << "x" << getMat(A)->cols() << ")"
-      << ", B=" << B << ", ldB=" << ldB << ", beta=" << beta << ", C=" << C 
+      << ", B=" << B << ", ldB=" << ldB << ", beta=" << beta << ", C=" << C
       << ", ldC=" << ldC << endl;
-   
+
    switch (sidea)
    {
    case 'l':
@@ -3542,7 +3545,7 @@ void susgemm(char sidea, char transa, char transb, int nohs, const float &alpha,
       //getMat(A)->mml(transa, transb, nohs, alpha, B, ldB, beta, C, ldC);
       getMat(A)->mml_vec(transa, transb, nohs, alpha, B, ldB, beta, C, ldC);
       break;
-      
+
    case 'r':
    case 'R':
    {
@@ -3550,7 +3553,7 @@ void susgemm(char sidea, char transa, char transb, int nohs, const float &alpha,
       getMat(A)->mmr_vec(transa, transb, nohs, alpha, B, ldB, beta, C, ldC);
       break;
    }
-   
+
    default:
       throw runtime_error("unsupported side type");
       break;
@@ -3598,47 +3601,47 @@ int main()
    /*float val[] = {1.2345, 3.49677, 2.123079, 5.12956, 4.234844, 2.13407685};
    int col[] = {2, 0, 3, 2, 1, 2};
    int ptr[] = {0, 1, 3, 4, 6};
-   
+
    spmat_t A_mkl = _suscr_csr(4, 4, val, col, ptr);
    spmat_t A_gen = suscr_csr(4, 4, val, col, ptr);
-   
+
    NIST_SPBLAS::print(A_gen);
    NIST_SPBLAS::_print(A_mkl);
-   
-   float B[] = {0.568, 1.153, 5.063, 4.238, 
+
+   float B[] = {0.568, 1.153, 5.063, 4.238,
                 2.225, 3.853, 4.129, 5.534};
-   
+
    float C_mkl[8];
    float C_gen[8];
-   
+
    memset(C_mkl, 0, sizeof(C_mkl));
    memset(C_gen, 0, sizeof(C_gen));*/
-   
-   
+
+
    ifstream ifs("../../RFN-doc/t10k-images-idx3-ubyte", ifstream::in | ifstream::binary);
-   
+
    int v;
-   
+
    for (int i = 0; i < 16; i++)
    {
       v = ifs.get();
    }
-   
+
    cout << endl;
    vector<float> val;
    vector<int> col;
    vector<int> ptr;
-   
+
    ptr.push_back(0);
-   
+
    for (int i = 0; i < 10000; i++)
    {
       ptr.push_back(ptr[ptr.size()-1]);
-      
+
       for (int j = 0; j < 784; j++)
       {
          v = ifs.get();
-         
+
          if (v != 0)
          {
             val.push_back(v/255.f);
@@ -3647,54 +3650,43 @@ int main()
          }
       }
    }
-   
+
    ifs.close();
-   
+
    spmat_t A = suscr_csr(10000, 784, &val[0], &col[0], &ptr[0]);
    NIST_SPBLAS::print(A);
-   
+
    float B[28 * 784];
    srand(0);
-   
+
    for (int i = 0; i < 28*784; i++)
       B[i] = ((float) rand() / RAND_MAX) * 2 - 1;
-   
+
    float C[10000 * 28];
-   
+
    susgemm('l', 'n', 't', 28, 1.f, A, B, 784, 0.f, C, 28);
-   
+
    for (int i = 0; i < 32; i++)
       cout << C[rand() % (10000 * 28)] << ", ";
-   
+
    cout << endl;
-   
+
    return 0;
-   
+
    /*
    //memset(C, 0, sizeof(C));
-   
+
    _susgemm('r', 'n', 't', 2, .1f, A_mkl, B, 2, 0.f, C_mkl, 4);
    //printmat(B, 2, 4);
    printmat(C_mkl, 2, 4);
-   
+
    susgemm('r', 'n', 't', 2, .1f, A_gen, B, 2, 0.f, C_gen, 4);
    //printmat(B, 2, 4);
    printmat(C_gen, 2, 4);
    */
-   
-   
+
+
    /*NIST_SPBLAS::print(A);
    NIST_SPBLAS::print(srowsubset(A, 0, 4));*/
 }
 #endif //0
-
-
-
-
-
-
-
-
-
-
-

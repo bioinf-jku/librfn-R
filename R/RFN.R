@@ -1,7 +1,7 @@
 library(Rcpp)
 
 #' Trains a Rectified Factor Network (RFN)
-#' 
+#'
 #' Trains an RFN as described by Clevert et al., 2014
 #' @param X The data matrix
 #' @param n_hidden Number of latent variables to estimate
@@ -23,11 +23,11 @@ library(Rcpp)
 #' @param seed Seed for the random number generator
 #' @param use_gpu Use the gpu (default cpu). Works only for sparse input.
 #' @param gpu_id If use_gpu is true, use gpu with this id (default -1 selects one available)
-#' @return Returns a list of matrices \code{W}, \code{P}, \code{H}, 
-#'  \code{Wout}, whereas \code{W \%*\% H} is the noise-free reconstruction 
-#'  of the data \code{X} and \code{diag(P)} is the covariance matrix 
-#'  of the additive zero-mean noise. \code{Wout} is the matrix that 
-#'  maps input vectors to their latent representation, usually by 
+#' @return Returns a list of matrices \code{W}, \code{P}, \code{H},
+#'  \code{Wout}, whereas \code{W \%*\% H} is the noise-free reconstruction
+#'  of the data \code{X} and \code{diag(P)} is the covariance matrix
+#'  of the additive zero-mean noise. \code{Wout} is the matrix that
+#'  maps input vectors to their latent representation, usually by
 #'  \code{pmax(t(Wout) \%*\% X, 0)}.
 #' @export
 #' @useDynLib RFN
@@ -39,83 +39,64 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
 {
    if (is.data.frame(X))
       X <- data.matrix(X)
-    
+
    if (!(is(X, "dgCMatrix") || is.numeric(X)) || length(dim(X)) != 2 || sum(is.na(X)) != 0)
       stop("X must be a numeric matrix without NAs")
-   
-   if (!is.numeric(c(n_hidden, n_iter, etaW, etaP, minP, batch_size, dropout_rate, input_noise_rate, 
-      l2_weightdecay, l1_weightdecay, h_threshold, momentum, apply_scaling, apply_newton_update, 
+
+   if (!is.numeric(c(n_hidden, n_iter, etaW, etaP, minP, batch_size, dropout_rate, input_noise_rate,
+      l2_weightdecay, l1_weightdecay, h_threshold, momentum, apply_scaling, apply_newton_update,
       seed)))
       stop("at least one of the numeric params is not numeric")
-   
+
    noise_type <- switch(noise_type, dropout=1, saltpepper=2,gaussian=3)
-   
+
    if (is.null(noise_type))
       stop("noise_type must be one of \"dropout\", \"saltpepper\", \"gaussian\"")
-   
+
    activation <- switch(activation, linear=0, relu=1, leaky=2, sigmoid=3, tanh=4)
-   
+
    if (is.null(activation))
       stop("activation must be one of \"linear\", \"relu\", \"leaky\", \"sigmoid\", \"tanh\"")
-   
+
    set.seed(ifelse(seed < 0, sample.int(10000, size=1), seed));
-   
+
    n <- ncol(X)
    m <- nrow(X)
    W <- matrix(0.01*rnorm(n_hidden * m), ncol=n_hidden)
    P <- rep(0.1, m)
-   
+
+   if (!use_gpu) {
+       gpu_id = -2
+   }
+
+
    if (is(X, "dgCMatrix")) {
       require(Matrix)
 
       if (noise_type == 3)
          stop("cannot use Gaussian noise on sparse input matrix")
-     
-     if (use_gpu) { # sparse GPU
-       res1 <- .Call('train_rfn_gpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
-                     as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
-                     input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
+
+      res1 <- .Call('R_train_rfn_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden),
+                     as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate,
+                     input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type),
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
                      as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
-       
-       Wout <- .Call('calculate_rfn_W_gpu_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
+
+      Wout <- .Call('R_calculate_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m),
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
                      as.integer(gpu_id), PACKAGE = 'RFN')
-     } else { # sparse CPU
-        res1 <- .Call('train_rfn_cpu_sparse', X@x, X@p, X@i, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
-           as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
-           input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
-           as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
-           as.integer(seed), PACKAGE = 'RFN')
-      
-        Wout <- .Call('calculate_rfn_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m), 
-          as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
-          PACKAGE = 'RFN')
-     }
    } else {
-      if (use_gpu) { # dense GPU
-        res1 <- .Call('train_rfn_gpu', X, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
-                     as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
-                     input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
+      res1 <- .Call('R_train_rfn', X, W, P, as.integer(n), as.integer(m), as.integer(n_hidden),
+                     as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate,
+                     input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type),
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
                      as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
-       
-        Wout <- .Call('calculate_rfn_W_gpu', X, res1$W, res1$P, as.integer(n), as.integer(m), 
+
+      Wout <- .Call('R_calculate_W', X, res1$W, res1$P, as.integer(n), as.integer(m),
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
                      as.integer(gpu_id), PACKAGE = 'RFN')
-      } else { # dense CPU
-        res1 <- .Call('train_rfn_cpu', X, W, P, as.integer(n), as.integer(m), as.integer(n_hidden), 
-           as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate, 
-           input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type), 
-           as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
-           as.integer(seed), PACKAGE = 'RFN')
-      
-        Wout <- .Call('calculate_rfn_W', X, res1$W, res1$P, as.integer(n), as.integer(m), 
-           as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
-           PACKAGE = 'RFN')
-      }
    }
-   
+
    H <- t(Wout) %*% X
    H <- pmax(as.matrix(H), h_threshold)
    return(list(W=res1$W, P=res1$P, H=H, Wout=Wout, T=res1$T))
@@ -124,10 +105,10 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
 
 #' Displays a picture, such as an MNIST digit or CIFAR image
 #' Assumes the image is stored in a rowwise-fashion in the vector x
-#' @param x the data to depict, a grayscale channel in \code{showSinglePicture}, or in 
+#' @param x the data to depict, a grayscale channel in \code{showSinglePicture}, or in
 #' \code{showSingleColorPicture} it is assumed to be a vector where the first
 #' third of the elements describe the red color channel, the next ones
-#' the green channel and the last third the blue channel; in \code{showPictures} its interpretation 
+#' the green channel and the last third the blue channel; in \code{showPictures} its interpretation
 #' is controlled by the parameter \code{isColor}.
 #' @param sidelength the height of the resulting picure in pixels; on \code{NULL}, a square picture
 #'  is assumed
@@ -189,7 +170,7 @@ showSingleColorPicture <- function(x, sidelength=NULL, normalize=TRUE, ...) {
 #' Shows multiple colored or grayscale pictures
 #' @param data contains the pixel data, one picture in each column
 #' @param nrow,ncol define the arrangement of the pictures
-#' @param idx defines the enumeration of the pictures, i.e. the order in which the columns of 
+#' @param idx defines the enumeration of the pictures, i.e. the order in which the columns of
 #'  \code{data} should be processed; on \code{NULL}, 1,2,3... is assumed
 #' @param isColor logical, indicates whether \code{data} is to be interpreted as single channel
 #'  or 3-way-channel (RGB)
@@ -240,6 +221,3 @@ gemm <- function(A, B)
    attributes(C)$dim <- rev(attributes(C)$dim)
    C <- t(C)
 }
-
-
-
