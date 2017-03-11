@@ -11,9 +11,8 @@ Licensed under GPL, version 2 or a later (see LICENSE.txt)
 extern "C" {
 #endif
 
-
 const int USE_CPU = -2;
-
+const int USE_GPU_WITH_MOST_MEMORY = -1;
 
 /**
  * Trains an RFN network.
