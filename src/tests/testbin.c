@@ -23,18 +23,15 @@ int cmpfunc (const void * a, const void * b){
    return ( *(int*)a - *(int*)b );
 }
 
-/*float* sparse_to_dense(SparseMatrix* sparse, int n, int m) {
-	float* dense = (float*) malloc(n * m * sizeof(float));
-	memset(dense, 0, n * m * sizeof(float));
-	for (unsigned i = 0; i < sparse->m; i++) {
-		for (unsigned j = sparse->rowPointers[i]; j < sparse->rowPointers[i + 1]; j++) {
-			dense[i + sparse->columns[j]*n] = sparse->values[j];
-		}
-	}
-	return dense;
-}*/
+struct sparse {
+float* vals;
+int* cols;
+int* rowPtrs;
+int n;
+int nnz;
+};
 
-/*SparseMatrix* dense_to_sparse(float* dense, int n, int m) {
+sparse dense_to_sparse(float* dense, int n, int m) {
 	int nnz = 0;
 	int* rowPointers = (int*) malloc((n + 1) * sizeof(int));
 	rowPointers[0] = 0;
@@ -60,15 +57,8 @@ int cmpfunc (const void * a, const void * b){
 			}
 		}
 	}
-
-	sparseMatrix* sparse = (sparseMatrix*) malloc(sizeof(sparseMatrix));
-	sparse->values = values;
-	sparse->columns = columns;
-	sparse->rowPointers = rowPointers;
-	sparse->m = n;
-	sparse->nnz = nnz;
-	return sparse;
-}*/
+	return {values, columns, rowPointers, n, nnz};
+}
 
 /*
 // generates random samples from a 0/1 Gaussian via Box-Mueller
@@ -156,6 +146,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < n * m; ++i) {
         X[i] = rand_unif() < dropout ? 0 : (5.0f * rand_unif() - 0.5f);
     }
+    sparse sp = dense_to_sparse(X, n, m);
 
     float* W = (float*) malloc(m * k * sizeof(float));
     float* P = (float*) malloc(m * sizeof(float));
@@ -186,7 +177,7 @@ int main(int argc, char** argv) {
     	printf("Testing GPU sparse implementation.\n");
     	for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            retval = train_rfn_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            retval = train_rfn_sparse(sp.vals, sp.cols, sp.rowPtrs, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -205,7 +196,7 @@ int main(int argc, char** argv) {
     if (sparse == 3) {
     	printf("Testing CPU sparse implementation.\n");
     	begin = clock();
-    	retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_CPU);
+    	retval = train_rfn_sparse(sp.vals, sp.cols, sp.rowPtrs, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_CPU);
     	end = clock();
         double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
