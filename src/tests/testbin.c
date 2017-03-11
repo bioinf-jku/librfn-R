@@ -23,13 +23,13 @@ int cmpfunc (const void * a, const void * b){
    return ( *(int*)a - *(int*)b );
 }
 
-struct sparse {
+typedef struct sparse {
 float* vals;
 int* cols;
 int* rowPtrs;
 int n;
 int nnz;
-};
+} sparse;
 
 sparse dense_to_sparse(float* dense, int n, int m) {
 	int nnz = 0;
@@ -57,7 +57,9 @@ sparse dense_to_sparse(float* dense, int n, int m) {
 			}
 		}
 	}
-	return {values, columns, rowPointers, n, nnz};
+	
+	sparse sp = { .vals = values, .cols = columns, .rowPtrs = rowPointers, .n = n, .nnz = nnz};
+	return sp;
 }
 
 /*
@@ -106,6 +108,8 @@ double calculate_variance(double* array, double mean, int length) {
     return sum / length;
 }
 
+
+
 int main(int argc, char** argv) {
     srand(123);
 
@@ -113,13 +117,12 @@ int main(int argc, char** argv) {
     int m = 784;
     int k = 5000;
     int n_iter = 10;
-    int gpu_id = USE_GPU_WITH_MOST_MEMORY;
-    int sparse = 1;
+    int type = 1;
     float dropout = 0.95;
-    int repeat_test = 10;
+    int repeat_test = 3;
 
     if (argc > 1) {
-    	sparse = atoi(argv[1]);
+    	type = atoi(argv[1]);
     }
 
     if (argc > 2) {
@@ -146,6 +149,7 @@ int main(int argc, char** argv) {
     for (int i = 0; i < n * m; ++i) {
         X[i] = rand_unif() < dropout ? 0 : (5.0f * rand_unif() - 0.5f);
     }
+
     sparse sp = dense_to_sparse(X, n, m);
 
     float* W = (float*) malloc(m * k * sizeof(float));
@@ -161,11 +165,11 @@ int main(int argc, char** argv) {
     clock_t begin, end;
     int retval;
 
-    if (sparse == 0 || sparse == -1) {
+    if (type & 1) {
     	printf("Testing GPU dense implementation.\n");
         for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_GPU_WITH_MOST_MEMORY);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -173,11 +177,11 @@ int main(int argc, char** argv) {
         double variance = calculate_variance(times_spent, mean, repeat_test);
     	printf("Retval %d; Mean time spent: %3.4fs; Variance: %3.4f\n", retval, mean, variance);
     }
-    if (sparse == 1 || sparse == -1) {
+    if (type & (1 << 1)) {
     	printf("Testing GPU sparse implementation.\n");
     	for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            retval = train_rfn_sparse(sp.vals, sp.cols, sp.rowPtrs, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            retval = train_rfn_sparse(sp.vals, sp.cols, sp.rowPtrs, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_GPU_WITH_MOST_MEMORY);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -185,7 +189,7 @@ int main(int argc, char** argv) {
         double variance = calculate_variance(times_spent, mean, repeat_test);
         printf("Retval %d; Mean time spent: %3.4fs; Variance: %3.4f\n", retval, mean, variance);
     }
-    if (sparse == 2) {
+    if (type & (1 << 2)) {
     	printf("Testing CPU dense implementation.\n");
     	begin = clock();
         retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_CPU);
@@ -193,7 +197,7 @@ int main(int argc, char** argv) {
         double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
     }
-    if (sparse == 3) {
+    if (type & (1 << 3)) {
     	printf("Testing CPU sparse implementation.\n");
     	begin = clock();
     	retval = train_rfn_sparse(sp.vals, sp.cols, sp.rowPtrs, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_CPU);
@@ -204,6 +208,9 @@ int main(int argc, char** argv) {
     free(X);
     free(W);
     free(P);
+    free(sp.vals);
+    free(sp.cols);
+    free(sp.rowPtrs);
     free(times_spent);
     return 0;
 }
