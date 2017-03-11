@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +23,7 @@ int cmpfunc (const void * a, const void * b){
    return ( *(int*)a - *(int*)b );
 }
 
-float* sparse_to_dense(sparseMatrix* sparse, int n, int m) {
+/*float* sparse_to_dense(SparseMatrix* sparse, int n, int m) {
 	float* dense = (float*) malloc(n * m * sizeof(float));
 	memset(dense, 0, n * m * sizeof(float));
 	for (unsigned i = 0; i < sparse->m; i++) {
@@ -33,9 +32,9 @@ float* sparse_to_dense(sparseMatrix* sparse, int n, int m) {
 		}
 	}
 	return dense;
-}
+}*/
 
-sparseMatrix* dense_to_sparse(float* dense, int n, int m) {
+/*SparseMatrix* dense_to_sparse(float* dense, int n, int m) {
 	int nnz = 0;
 	int* rowPointers = (int*) malloc((n + 1) * sizeof(int));
 	rowPointers[0] = 0;
@@ -69,7 +68,7 @@ sparseMatrix* dense_to_sparse(float* dense, int n, int m) {
 	sparse->m = n;
 	sparse->nnz = nnz;
 	return sparse;
-}
+}*/
 
 /*
 // generates random samples from a 0/1 Gaussian via Box-Mueller
@@ -124,7 +123,7 @@ int main(int argc, char** argv) {
     int m = 784;
     int k = 5000;
     int n_iter = 10;
-    int gpu_id = -1;
+    int gpu_id = USE_GPU_WITH_MOST_MEMORY;
     int sparse = 1;
     float dropout = 0.95;
     int repeat_test = 10;
@@ -158,8 +157,6 @@ int main(int argc, char** argv) {
         X[i] = rand_unif() < dropout ? 0 : (5.0f * rand_unif() - 0.5f);
     }
 
-    sparseMatrix* sp = dense_to_sparse(X, n, m);
-
     float* W = (float*) malloc(m * k * sizeof(float));
     float* P = (float*) malloc(m * sizeof(float));
 
@@ -177,7 +174,7 @@ int main(int argc, char** argv) {
     	printf("Testing GPU dense implementation.\n");
         for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            retval = train_gpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -189,7 +186,7 @@ int main(int argc, char** argv) {
     	printf("Testing GPU sparse implementation.\n");
     	for (int i = 0; i < repeat_test; i++) {
             begin = clock();
-            retval = train_gpu_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
+            retval = train_rfn_sparse(sp, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, gpu_id);
             end = clock();
             times_spent[i] = (double)(end - begin) / CLOCKS_PER_SEC;
         }
@@ -200,7 +197,7 @@ int main(int argc, char** argv) {
     if (sparse == 2) {
     	printf("Testing CPU dense implementation.\n");
     	begin = clock();
-        retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
+        retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_CPU);
     	end = clock();
         double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
@@ -208,16 +205,12 @@ int main(int argc, char** argv) {
     if (sparse == 3) {
     	printf("Testing CPU sparse implementation.\n");
     	begin = clock();
-    	retval = train_cpu(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32);
+    	retval = train_rfn(X, W, P, n, m, k, n_iter, -1, 0.1, 0.1, 1e-2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1, 1, 1, 1, 32, USE_CPU);
     	end = clock();
         double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     	printf("Retval %d; Time spent: %3.4fs\n", retval, time_spent);
     }
     free(X);
-    free(sp->columns);
-    free(sp->rowPointers);
-    free(sp->values);
-    free(sp);
     free(W);
     free(P);
     free(times_spent);
