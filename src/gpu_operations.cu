@@ -334,6 +334,11 @@ GPU_Operations::SparseMatrix GPU_Operations::create_sparse_matrix(const float* X
     return X;
 }
 
+void GPU_Operations::free_sparse_matrix(const GPU_Operations::SparseMatrix& x) {
+    // We do nothing because we don't allocate when we create, either
+}
+
+
 
 float* GPU_Operations::to_device(const float* src, size_t size) const {
     float* dst = 0;
@@ -670,7 +675,7 @@ void GPU_Operations::printMatrixCM(const float* a, int n, int m, const char* fmt
 }
 
 void GPU_Operations::printMatrixSP(const SparseMatrix *a, const char* fmt) const {
-    const char* format = fmt == 0 ? "%1.3f " : fmt;
+    //const char* format = fmt == 0 ? "%1.3f " : fmt;
     size_t size_values = a->nnz * sizeof(float);
     size_t size_columns = a->nnz * sizeof(int);
     size_t size_pointers = (a->n + 1)* sizeof(int);
