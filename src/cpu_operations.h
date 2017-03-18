@@ -205,7 +205,11 @@ float *malloc_matrix(int rows, int cols, float *dummy) {
 }
 
 float* malloc(size_t size) const {
-    return (float*) std::malloc(size);
+    float* ptr = (float*) std::malloc(size);
+    if (!ptr) {
+        fprintf(stderr, "malloc failed\n");
+    }
+    return ptr;
 }
 
 void maximum(float* x, const float value, const int size) const {
