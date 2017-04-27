@@ -4,7 +4,6 @@
 ## Licensed under GNU GPL 3 or later
 
 AC_INIT(sparse-rfn, version-0.1)
-
 ## Cuda Toolkit
 
 AC_SUBST([CUDA_HOME])
@@ -66,3 +65,6 @@ AC_SUBST([CPPFLAGS])
 
 AC_CONFIG_FILES([src/Makevars:Makevars.in])
 AC_OUTPUT
+
+# Delete Makefile from librfn
+rm -f src/Makefile

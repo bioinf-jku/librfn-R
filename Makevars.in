@@ -6,7 +6,7 @@ BL_LIBS=@BL_LIBS@
 CPPFLAGS=@CPPFLAGS@
 
 PKG_LIBS=$(BL_LIBS) $(CUDA_LD) 
-PKG_CPPFLAGS=-DCOMPILE_FOR_R -I$(CUDA_INC) $(CPPFLAGS)
+PKG_CPPFLAGS=-DMEM_DEBUG -DCOMPILE_FOR_R -I$(CUDA_INC) $(CPPFLAGS)
 PKG_CXXFLAGS=-std=c++11
 
 $(info PKG_LIBS is $(PKG_LIBS))
@@ -24,6 +24,6 @@ OBJECTS = gpu_operations.o nist_spblas.o librfn.o cpu_operations.o rwrapper.o
 
 all: $(SHLIB)
 gpu_operations.o: gpu_operations.cu
-	$(NVCC) -std=c++11 -Xcompiler -fPIC  -g $(NVCCFLAGS) -o gpu_operations.o -c gpu_operations.cu
+	$(NVCC) -DMEM_DEBUG -std=c++11 -Xcompiler -fPIC  -g $(NVCCFLAGS) -o gpu_operations.o -c gpu_operations.cu
 
 #PKG_CXXFLAGS=-std=c++0x
