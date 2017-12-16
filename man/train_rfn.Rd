@@ -8,7 +8,8 @@ train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, batch_size = -1,
   dropout_rate = 0, input_noise_rate = 0, l2_weightdecay = 0,
   l1_weightdecay = 0, h_threshold = 0, momentum = 0,
   noise_type = "saltpepper", activation = "relu", apply_scaling = 1,
-  apply_newton_update = 1, seed = -1)
+  apply_newton_update = 1, seed = -1, use_gpu = 0, gpu_id = -1,
+  verbose = T)
 }
 \arguments{
 \item{X}{The data matrix}
@@ -46,16 +47,21 @@ train_rfn(X, n_hidden, n_iter, etaW, etaP, minP, batch_size = -1,
 \item{apply_newton_update}{Whether to use a Newton update (default) or a gradient descent step}
 
 \item{seed}{Seed for the random number generator}
+
+\item{use_gpu}{Use the gpu (default cpu). Works only for sparse input.}
+
+\item{gpu_id}{If use_gpu is true, use gpu with this id (default -1 selects one available)}
+
+\item{verbose}{True to print messages during the run. Default is True.}
 }
 \value{
-Returns a list of matrices \code{W}, \code{P}, \code{H}, 
- \code{Wout}, whereas \code{W \%*\% H} is the noise-free reconstruction 
- of the data \code{X} and \code{diag(P)} is the covariance matrix 
- of the additive zero-mean noise. \code{Wout} is the matrix that 
- maps input vectors to their latent representation, usually by 
+Returns a list of matrices \code{W}, \code{P}, \code{H},
+ \code{Wout}, whereas \code{W \%*\% H} is the noise-free reconstruction
+ of the data \code{X} and \code{diag(P)} is the covariance matrix
+ of the additive zero-mean noise. \code{Wout} is the matrix that
+ maps input vectors to their latent representation, usually by
  \code{pmax(t(Wout) \%*\% X, 0)}.
 }
 \description{
 Trains an RFN as described by Clevert et al., 2014
 }
-

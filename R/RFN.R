@@ -23,6 +23,7 @@ library(Rcpp)
 #' @param seed Seed for the random number generator
 #' @param use_gpu Use the gpu (default cpu). Works only for sparse input.
 #' @param gpu_id If use_gpu is true, use gpu with this id (default -1 selects one available)
+#' @param verbose True to print messages during the run. Default is True.
 #' @return Returns a list of matrices \code{W}, \code{P}, \code{H},
 #'  \code{Wout}, whereas \code{W \%*\% H} is the noise-free reconstruction
 #'  of the data \code{X} and \code{diag(P)} is the covariance matrix
@@ -35,7 +36,7 @@ library(Rcpp)
 train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
    dropout_rate=0.0, input_noise_rate=0.0, l2_weightdecay=0.0,
    l1_weightdecay=0.0, h_threshold=0.0, momentum=0.0, noise_type="saltpepper",
-   activation="relu", apply_scaling=1, apply_newton_update=1, seed=-1, use_gpu=0, gpu_id=-1)
+   activation="relu", apply_scaling=1, apply_newton_update=1, seed=-1, use_gpu=0, gpu_id=-1, verbose=T)
 {
    if (is.data.frame(X))
       X <- data.matrix(X)
@@ -80,7 +81,7 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
                      as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate,
                      input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type),
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
-                     as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
+                     as.integer(seed), as.integer(gpu_id), as.logical(verbose), PACKAGE = 'RFN')
 
       Wout <- .Call('R_calculate_W_sparse', X@x, X@p, X@i, res1$W, res1$P, as.integer(n), as.integer(m),
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
@@ -90,7 +91,7 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
                      as.integer(n_iter), as.integer(batch_size), etaW, etaP, minP, h_threshold, dropout_rate,
                      input_noise_rate, l2_weightdecay, l1_weightdecay, momentum, as.integer(noise_type),
                      as.integer(activation), as.integer(apply_scaling), as.integer(apply_newton_update),
-                     as.integer(seed), as.integer(gpu_id), PACKAGE = 'RFN')
+                     as.integer(seed), as.integer(gpu_id), as.logical(verbose), PACKAGE = 'RFN')
 
       Wout <- .Call('R_calculate_W', X, res1$W, res1$P, as.integer(n), as.integer(m),
                      as.integer(n_hidden), as.integer(activation), as.integer(apply_scaling), h_threshold,
