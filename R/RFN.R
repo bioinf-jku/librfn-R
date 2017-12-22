@@ -59,7 +59,9 @@ train_rfn <- function(X, n_hidden, n_iter, etaW, etaP, minP, batch_size=-1,
    if (is.null(activation))
       stop("activation must be one of \"linear\", \"relu\", \"leaky\", \"sigmoid\", \"tanh\"")
 
-   set.seed(ifelse(seed < 0, sample.int(10000, size=1), seed));
+   if (seed > -1) {
+      set.seed(seed);
+   }
 
    n <- ncol(X)
    m <- nrow(X)
