@@ -1,3 +1,4 @@
+ENABLE_GPU=@ENABLE_GPU@
 NVCC=@NVCC@
 CUDA_LD=@CUDA_LD@
 CUDA_INC=@CUDA_INCLUDE@
@@ -20,7 +21,14 @@ NVCCFLAGS=--use_fast_math $(addprefix -Xcompiler , $(CXXFLAGS)) \
 #          -gencode arch=compute_10,code=sm_10 \
 #          -gencode arch=compute_30,code=\"sm_30,sm_35\"
 
-OBJECTS = gpu_operations.o nist_spblas.o librfn.o cpu_operations.o rwrapper.o
+OBJECTS = nist_spblas.o librfn.o cpu_operations.o rwrapper.o
+
+ifeq ($(ENABLE_GPU),yes)
+  OBJECTS+=gpu_operations.o
+else
+  PKG_CPPFLAGS+=-DNOGPU
+endif
+
 
 all: $(SHLIB)
 gpu_operations.o: gpu_operations.cu

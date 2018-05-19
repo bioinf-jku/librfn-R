@@ -15,6 +15,7 @@ Type the following in the parent directory of the repository. The parameter `--c
 ``` sh
 R CMD INSTALL \
   --configure-args=' \
+  --enable-gpu \
   --with-cuda-home=/usr/local/cuda \
   --with-mkl-home=/opt/intel/mkl' \
   librfn-R
@@ -22,7 +23,7 @@ R CMD INSTALL \
 
 # Requirements
 To run the GPU code, you require a CUDA 7.5 (or higher) compatible GPU. While in theory CUDA 7.0 is also supported, it contains a bug that results in a memory leak when running librfn (and your program is likely to crash with an out-of-memory error).
-
+For GPU support make sure to configure the library with ```enable-gpu``` before installing.
 
 # Implementation Note
 

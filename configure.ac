@@ -6,26 +6,39 @@
 AC_INIT(sparse-rfn, version-0.1)
 ## Cuda Toolkit
 
+AC_ARG_ENABLE([gpu],
+[  --enable-gpu    Enable GPU support],
+[case "${enableval}" in
+  yes) gpu=true ;;
+  no)  gpu=false ;;
+  *) AC_MSG_ERROR([bad value ${enableval} for --enable-gpu]) ;;
+esac],[gpu=false])
+
+AM_CONDITIONAL([ENABLE_GPU], [test x$gpu = xtrue])
 AC_SUBST([CUDA_HOME])
 AM_CONDITIONAL([HAS_CUDA_HOME], [test ! -z "$CUDA_HOME"])
-AM_COND_IF([HAS_CUDA_HOME],[],[AC_ARG_WITH([cuda-home],
-	[AC_HELP_STRING([--with-cuda-home=DIR],
-		[full path to CUDA installation @<:@/usr/local/cuda@:>@])],
-	[CUDA_HOME="$withval"], [CUDA_HOME=/usr/local/cuda])])
+   
+AM_COND_IF([ENABLE_GPU],
+  [AC_SUBST([ENABLE_GPU],yes)
+   AM_COND_IF([HAS_CUDA_HOME],[],
+     [AC_ARG_WITH([cuda-home],
+	     [AC_HELP_STRING([--with-cuda-home=DIR],
+		      [full path to CUDA installation @<:@/usr/local/cuda@:>@])],
+	     [CUDA_HOME="$withval"], [CUDA_HOME=/usr/local/cuda])])
 
-NVCC=${CUDA_HOME}/bin/nvcc
-AC_CHECK_FILE([${NVCC}],,[AC_MSG_ERROR([nvcc not found!])])
+   NVCC=${CUDA_HOME}/bin/nvcc
+   AC_CHECK_FILE([${NVCC}],,[AC_MSG_ERROR([nvcc not found!])])
 
-CUDA_INCLUDE=${CUDA_HOME}/include
-AC_CHECK_FILE([${CUDA_INCLUDE}/cublas.h],,[AC_MSG_ERROR([CUDA headers not found!])])
+   CUDA_INCLUDE=${CUDA_HOME}/include
+   AC_CHECK_FILE([${CUDA_INCLUDE}/cublas.h],,[AC_MSG_ERROR([CUDA headers not found!])])
 
-AC_CHECK_FILE([${CUDA_HOME}/lib64/libcublas.so], [check_bit=64-bit])
-if test "${check_bit}" == "64-bit"; then
-	CUDA_LD_LOC="-L${CUDA_HOME}/lib64"
-else
-	CUDA_LD_LOC="-L${CUDA_HOME}/lib"
-fi
-CUDA_LD="${CUDA_LD_LOC} -lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse"
+   AC_CHECK_FILE([${CUDA_HOME}/lib64/libcublas.so], [check_bit=64-bit])
+   if test "${check_bit}" == "64-bit"; then
+	   CUDA_LD_LOC="-L${CUDA_HOME}/lib64"
+   else
+	   CUDA_LD_LOC="-L${CUDA_HOME}/lib"
+   fi
+   CUDA_LD="${CUDA_LD_LOC} -lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse"],[AC_SUBST([ENABLE_GPU], no)])
 
 ## MKL
 AC_SUBST([MKL_HOME])

@@ -591,9 +591,12 @@ NVCC
 HAS_MKL_HOME_FALSE
 HAS_MKL_HOME_TRUE
 MKL_HOME
+ENABLE_GPU
 HAS_CUDA_HOME_FALSE
 HAS_CUDA_HOME_TRUE
 CUDA_HOME
+ENABLE_GPU_FALSE
+ENABLE_GPU_TRUE
 target_alias
 host_alias
 build_alias
@@ -635,6 +638,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_gpu
 with_cuda_home
 with_mkl_home
 '
@@ -1246,6 +1250,12 @@ if test -n "$ac_init_help"; then
    esac
   cat <<\_ACEOF
 
+Optional Features:
+  --disable-option-checking  ignore unrecognized --enable/--with options
+  --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+  --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-gpu    Enable GPU support
+
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
@@ -1682,6 +1692,26 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 ## Cuda Toolkit
 
+# Check whether --enable-gpu was given.
+if test "${enable_gpu+set}" = set; then :
+  enableval=$enable_gpu; case "${enableval}" in
+  yes) gpu=true ;;
+  no)  gpu=false ;;
+  *) as_fn_error $? "bad value ${enableval} for --enable-gpu" "$LINENO" 5 ;;
+esac
+else
+  gpu=false
+fi
+
+
+ if test x$gpu = xtrue; then
+  ENABLE_GPU_TRUE=
+  ENABLE_GPU_FALSE='#'
+else
+  ENABLE_GPU_TRUE='#'
+  ENABLE_GPU_FALSE=
+fi
+
 
  if test ! -z "$CUDA_HOME"; then
   HAS_CUDA_HOME_TRUE=
@@ -1691,7 +1721,11 @@ else
   HAS_CUDA_HOME_FALSE=
 fi
 
-if test -z "$HAS_CUDA_HOME_TRUE"; then :
+
+if test -z "$ENABLE_GPU_TRUE"; then :
+  ENABLE_GPU=yes
+
+   if test -z "$HAS_CUDA_HOME_TRUE"; then :
   else
 
 # Check whether --with-cuda-home was given.
@@ -1703,8 +1737,8 @@ fi
 
 fi
 
-NVCC=${CUDA_HOME}/bin/nvcc
-as_ac_File=`$as_echo "ac_cv_file_${NVCC}" | $as_tr_sh`
+   NVCC=${CUDA_HOME}/bin/nvcc
+   as_ac_File=`$as_echo "ac_cv_file_${NVCC}" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${NVCC}" >&5
 $as_echo_n "checking for ${NVCC}... " >&6; }
 if eval \${$as_ac_File+:} false; then :
@@ -1728,8 +1762,8 @@ else
 fi
 
 
-CUDA_INCLUDE=${CUDA_HOME}/include
-as_ac_File=`$as_echo "ac_cv_file_${CUDA_INCLUDE}/cublas.h" | $as_tr_sh`
+   CUDA_INCLUDE=${CUDA_HOME}/include
+   as_ac_File=`$as_echo "ac_cv_file_${CUDA_INCLUDE}/cublas.h" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${CUDA_INCLUDE}/cublas.h" >&5
 $as_echo_n "checking for ${CUDA_INCLUDE}/cublas.h... " >&6; }
 if eval \${$as_ac_File+:} false; then :
@@ -1753,7 +1787,7 @@ else
 fi
 
 
-as_ac_File=`$as_echo "ac_cv_file_${CUDA_HOME}/lib64/libcublas.so" | $as_tr_sh`
+   as_ac_File=`$as_echo "ac_cv_file_${CUDA_HOME}/lib64/libcublas.so" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${CUDA_HOME}/lib64/libcublas.so" >&5
 $as_echo_n "checking for ${CUDA_HOME}/lib64/libcublas.so... " >&6; }
 if eval \${$as_ac_File+:} false; then :
@@ -1774,12 +1808,16 @@ if eval test \"x\$"$as_ac_File"\" = x"yes"; then :
   check_bit=64-bit
 fi
 
-if test "${check_bit}" == "64-bit"; then
-	CUDA_LD_LOC="-L${CUDA_HOME}/lib64"
+   if test "${check_bit}" == "64-bit"; then
+	   CUDA_LD_LOC="-L${CUDA_HOME}/lib64"
+   else
+	   CUDA_LD_LOC="-L${CUDA_HOME}/lib"
+   fi
+   CUDA_LD="${CUDA_LD_LOC} -lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse"
 else
-	CUDA_LD_LOC="-L${CUDA_HOME}/lib"
+  ENABLE_GPU=no
+
 fi
-CUDA_LD="${CUDA_LD_LOC} -lcublas -lcurand -lcuda -lcudart -lcusolver -lcusparse"
 
 ## MKL
 
@@ -2038,6 +2076,10 @@ LIBOBJS=$ac_libobjs
 LTLIBOBJS=$ac_ltlibobjs
 
 
+if test -z "${ENABLE_GPU_TRUE}" && test -z "${ENABLE_GPU_FALSE}"; then
+  as_fn_error $? "conditional \"ENABLE_GPU\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${HAS_CUDA_HOME_TRUE}" && test -z "${HAS_CUDA_HOME_FALSE}"; then
   as_fn_error $? "conditional \"HAS_CUDA_HOME\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
